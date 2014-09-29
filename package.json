@@ -40,7 +40,8 @@
     "load-grunt-tasks": "~0.6",
     "lodash": "^2.4.1",
     "phantomjs": "~1.9",
-    "proxyquireify": "~1.0"
+    "proxyquireify": "~1.0",
+    "request-animation-frame-mock": "erykpiast/request-animation-frame-mock"
   },
   "dependencies": {
     "extend": "^1.3.0",

@@ -6,12 +6,14 @@ module.exports = function (config) {
 
         files: [ /* definition in gruntfile */ ],
 
-        reporters: [ 'dots' ],
+        reporters: [ 'progress' ],
         colors: true,
         logLevel: config.LOG_INFO,
 
         port: 9876,
         autoWatch: false,
+        
+        browserNoActivityTimeout: 10e5,
 
         browsers: [ 'PhantomJS'/*, 'Chrome'*/ ],
         singleRun: true
