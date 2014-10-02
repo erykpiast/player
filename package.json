@@ -32,6 +32,7 @@
     "grunt-contrib-watch": "~0.6",
     "grunt-http-server": "latest",
     "grunt-karma": "~0.8",
+    "grunt-notify": "^0.3.1",
     "jshint": "~2.5",
     "karma": "~0.12",
     "karma-chrome-launcher": "~0.1",

@@ -6,6 +6,7 @@ module.exports = function (grunt) {
         'jshint',
         'clean:demo',
         'browserify:demo',
+        'notify:build',
         'http-server:demo',
         'watch:demo',
         'clean:demo'
@@ -57,7 +58,9 @@ module.exports = function (grunt) {
                 'jshint',
                 'clean:test',
                 'browserify:test-dev',
+                'notify:build',
                 'karma:unit',
+                'notify:test',
                 'watch:test',
                 'clean:test'
             ],
@@ -65,7 +68,9 @@ module.exports = function (grunt) {
                 'jshint',
                 'clean:test',
                 'browserify:test-dist',
+                'notify:build',
                 'karma:unit',
+                'notify:test',
                 'clean:test'
             ]
         },
@@ -113,7 +118,8 @@ module.exports = function (grunt) {
                 tasks: [
                     'jshint',
                     'clean:demo',
-                    'browserify:demo'
+                    'browserify:demo',
+                    'notify:build'
                 ]
             },
             test: {
@@ -125,7 +131,9 @@ module.exports = function (grunt) {
                     'jshint',
                     'clean:test',
                     'browserify:test-dev',
+                    'notify:build',
                     'karma:unit',
+                    'notify:test'
                 ]
             }
         },
@@ -159,6 +167,20 @@ module.exports = function (grunt) {
                 }
             }
         },
+        notify: {
+            test: {
+                options: {
+                    title: 'Tests completed',
+                    message: 'All tests passed successfully'
+                }
+            },
+            build: {
+                options: {
+                    title: 'Building completed',
+                    message: 'Enjoy new version of your app!'
+                }
+            }
+        }
     });
 
     require('load-grunt-tasks')(grunt);
