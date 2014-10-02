@@ -1,7 +1,6 @@
 /* global jasmine, describe, xdescribe, it, xit, expect, beforeEach, afterEach */
 jasmine.DEFAULT_TIMEOUT_INTERVAL = 10e10; // really big number, because Infinity doesn't work
 
-var lodash = require('lodash');
 var proxyquire = require('proxyquireify')(require);
 
 var requestAnimationFrameMock = require('request-animation-frame-mock');
@@ -59,6 +58,7 @@ describe('Player istance test', function() {
 
 
 describe('Player.prototype.play test', function() {
+    var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -67,12 +67,12 @@ describe('Player.prototype.play test', function() {
         for(var i = 0; i < count; i++) {
             frames[i] = {
                 index: i,
-                time: (frames[i - 1] ? frames[i - 1].time : 0) + Math.floor(Math.random() * difference)
+                time: (frames[i - 1] ? frames[i - 1].time + difference : 0)
             };
         }
 
         return frames;
-    })(100, 100);
+    })(100, frameTime);
     var drawingFnCalls;
     var playingStart;
 
@@ -82,34 +82,35 @@ describe('Player.prototype.play test', function() {
             clearInterval: window.clearInterval.bind(window),
             time: 1,
             frameTime: function (previousTime) {
-                return previousTime + (1000 / 60) + (Math.random() * (1000 / 60));
+                return previousTime + frameTime;
             }
         });
-    
+
         drawingFnCalls = [ ];
-        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframe, nextKeyframe, currentTime) {
-            // console.log('fps', fps);
-            
-            // for(var i = 0, maxi = Math.floor(Math.random() * 1000000); i < maxi; i++) {
-            //     Math.pow(i, i);
-            // }
-            
-            drawingFnCalls.push({
-                realTime: Date.now(),
-                frameTime: keyframe.time
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart)).toFixed(3), 10)),
+                    index: index
+                };
+
+                drawingFnCalls.push(call);
             });
         });
         player = new Player(exampleFrames, drawingFn);
-        player.on('start', function() {
-            playingStart = Date.now();
+        player.on('start', function(time) {
+            playingStart = time;
         });
         player.on('end', done);
+
         player.play();
     });
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
-        
+
         player = null;
         drawingFn = null;
         playingStart = null;
@@ -117,9 +118,17 @@ describe('Player.prototype.play test', function() {
     });
 
     it('Should call drawer function once for each frame and in order', function() {
-        expect(drawingFn.calls.count()).toEqual(exampleFrames.length);
+        expect(drawingFnCalls.length).toEqual(exampleFrames.length);
         drawingFn.calls.allArgs().forEach(function(args, index) {
-            expect(args[0]).toBe(exampleFrames[index]);
+            expect(args[0][0]).toBe(exampleFrames[index]);
+        });
+    });
+
+    it('Should call drawer function with no offset for the first keyframe if keyframes times are equal to frame times ', function() {
+        drawingFnCalls.filter(function(call) {
+            return (call.index === 0);
+        }).forEach(function(call) {
+            expect(call.timeDiff).toBe(0);
         });
     });
 
@@ -128,7 +137,6 @@ describe('Player.prototype.play test', function() {
 
 describe('Player.prototype.play with variuous speeds test', function() {
     var speed = 1;
-    var maxTimeDifference = 1000 / 60;
     var player;
     var drawingFn;
     var drawingFnCalls;
@@ -140,36 +148,35 @@ describe('Player.prototype.play with variuous speeds test', function() {
             clearInterval: window.clearInterval.bind(window),
             time: 1,
             frameTime: function (previousTime) {
-                return previousTime + (1000 / 60)/* + Math.floor(Math.random() * (1000 / 60))*/;
+                return previousTime + (1000 / 60);
             }
         });
-    
+
         drawingFnCalls = [ ];
-        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframe, nextKeyframe, index, frameTime) {
-            var call = {
-                realTime: frameTime,
-                frameTime: keyframe.time,
-                timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart) * speed).toFixed(3), 10)),
-                index: index
-            };
-            
-            // print current FPS
-            // console.log((1000000 / player._averageFrameDuration).toFixed(3));
-            
-            drawingFnCalls.push(call);
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart) * speed).toFixed(3), 10)),
+                    index: index
+                };
+
+                drawingFnCalls.push(call);
+            });
         });
     });
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
-        
+
         player = null;
         drawingFn = null;
         playingStart = null;
         drawingFnCalls = null;
         speed = 1;
     });
-    
+
     function _maxTimeDiff(drawingFnCalls) {
         return drawingFnCalls.filter(function(call) {
             return (call.index === 0);
@@ -179,74 +186,79 @@ describe('Player.prototype.play with variuous speeds test', function() {
             return Math.max(Math.abs(a), Math.abs(b));
         });
     }
-    
-    
+
+
     function _createFrames(count, difference) {
         var frames = [];
 
         for(var i = 0; i < count; i++) {
             frames[i] = {
                 index: i,
-                time: Math.round(frames[i - 1] ? frames[i - 1].time + Math.floor(Math.random() * difference) : 0)
+                time: frames[i - 1] ? frames[i - 1].time + difference : 0
             };
         }
 
-        return frames;
+        return frames.map(function(frame) {
+            frame.time = Math.round(frame.time);
+
+            return frame;
+        });
     }
-    
-    
-    function _testSpeed(testedSpeed, exampleFrames) {
+
+
+    function _testSpeed(testedSpeed, framerate, framesCount) {
         return function(done) {
-            player = new Player(exampleFrames, drawingFn);
+            player = new Player(_createFrames(framesCount, 1000 / framerate), drawingFn);
             player.on('start', function(startTime) {
                 playingStart = startTime;
             });
-        
+
             speed = testedSpeed;
-            
+
             player._speed = speed;
-            
+
             player.play();
-            
+
             player.on('end', function() {
-                // console.warn('max time difference for speed ' + speed + ':',  _maxTimeDiff(drawingFnCalls));
-                expect(drawingFn.calls.count()).toEqual(exampleFrames.length);
-                // max time difference is one frame +- some margin
-                expect(_maxTimeDiff(drawingFnCalls)).not.toBeGreaterThan(Math.round(maxTimeDifference * speed * 1.1));
+                expect(drawingFnCalls.length).toEqual(framesCount);
+                
+                // max time difference is two frames
+                expect(_maxTimeDiff(drawingFnCalls)).not.toBeGreaterThan(Math.round((1000 / framerate) * speed * 2));
+                
                 done();
             });
         };
     }
 
-    it('Should play 23.976fps recording with normal speed', _testSpeed(1, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with normal speed', _testSpeed(1, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with normal speed', _testSpeed(1, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with normal speed', _testSpeed(1, _createFrames(100, (1000/60))));
-    
-    it('Should play 23.976fps recording with double speed', _testSpeed(2, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with double speed', _testSpeed(2, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with double speed', _testSpeed(2, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with double speed', _testSpeed(2, _createFrames(100, (1000/60))));
-    
-    it('Should play 23.976fps recording with x4 speed', _testSpeed(4, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with x4 speed', _testSpeed(4, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with x4 speed', _testSpeed(4, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with x4 speed', _testSpeed(4, _createFrames(100, (1000/60))));
-    
-    it('Should play 23.976fps recording with super high speed', _testSpeed(64, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with super high speed', _testSpeed(64, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with super high speed', _testSpeed(64, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with super high speed', _testSpeed(64, _createFrames(100, (1000/60))));
-    
-    it('Should play 23.976fps recording with slow speed', _testSpeed(0.5, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with slow speed', _testSpeed(0.5, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with slow speed', _testSpeed(0.5, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with slow speed', _testSpeed(0.5, _createFrames(100, (1000/60))));
-    
-    it('Should play 23.976fps recording with super slow speed', _testSpeed(0.1, _createFrames(100, (1000/24.976))));
-    it('Should play 25fps recording with super slow speed', _testSpeed(0.1, _createFrames(100, (1000/25))));
-    it('Should play 30fps recording with super slow speed', _testSpeed(0.1, _createFrames(100, (1000/30))));
-    it('Should play 60fps recording with super slow speed', _testSpeed(0.1, _createFrames(100, (1000/60))));
+    it('Should play 23.976fps recording with normal speed', _testSpeed(1, 23.976, 100));
+    it('Should play 25fps recording with normal speed', _testSpeed(1, 25, 100));
+    it('Should play 30fps recording with normal speed', _testSpeed(1, 30, 100));
+    it('Should play 60fps recording with normal speed', _testSpeed(1, 60, 100));
+
+    it('Should play 23.976fps recording with double speed', _testSpeed(2, 23.976, 100));
+    it('Should play 25fps recording with double speed', _testSpeed(2, 25, 100));
+    it('Should play 30fps recording with double speed', _testSpeed(2, 30, 100));
+    it('Should play 60fps recording with double speed', _testSpeed(2, 60, 100));
+
+    it('Should play 23.976fps recording with x4 speed', _testSpeed(4, 23.976, 100));
+    it('Should play 25fps recording with x4 speed', _testSpeed(4, 25, 100));
+    it('Should play 30fps recording with x4 speed', _testSpeed(4, 30, 100));
+    it('Should play 60fps recording with x4 speed', _testSpeed(4, 60, 100));
+
+    it('Should play 23.976fps recording with super high speed', _testSpeed(64, 23.976, 100));
+    it('Should play 25fps recording with super high speed', _testSpeed(64, 25, 100));
+    it('Should play 30fps recording with super high speed', _testSpeed(64, 30, 100));
+    it('Should play 60fps recording with super high speed', _testSpeed(64, 60, 100));
+
+    it('Should play 23.976fps recording with slow speed', _testSpeed(0.5, 23.976, 100));
+    it('Should play 25fps recording with slow speed', _testSpeed(0.5, 25, 100));
+    it('Should play 30fps recording with slow speed', _testSpeed(0.5, 30, 100));
+    it('Should play 60fps recording with slow speed', _testSpeed(0.5, 60, 100));
+
+    it('Should play 23.976fps recording with super slow speed', _testSpeed(0.1, 23.976, 100));
+    it('Should play 25fps recording with super slow speed', _testSpeed(0.1, 25, 100));
+    it('Should play 30fps recording with super slow speed', _testSpeed(0.1, 30, 100));
+    it('Should play 60fps recording with super slow speed', _testSpeed(0.1, 60, 100));
 
 });
 
@@ -278,12 +290,19 @@ describe('Player.prototype.pause test', function() {
                 return previousTime + (1000 / 60) + (Math.random() * (1000 / 60));
             }
         });
-    
+
         drawingFnCalls = [ ];
-        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframe, nextKeyframe, currentTime) {
-            drawingFnCalls.push({
-                realTime: Date.now(),
-                frameTime: keyframe.time
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart)).toFixed(3), 10)),
+                    index: index,
+                    keyframe: keyframe
+                };
+
+                drawingFnCalls.push(call);
             });
         });
         player = new Player(exampleFrames, drawingFn);
@@ -291,17 +310,17 @@ describe('Player.prototype.pause test', function() {
             playingStart = Date.now();
         });
         player.play();
-        
+
         setTimeout(function() {
             player.pause();
-            
+
             done();
         }, 10);
     });
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
-        
+
         player = null;
         drawingFn = null;
         playingStart = null;
@@ -309,22 +328,22 @@ describe('Player.prototype.pause test', function() {
     });
 
     it('Should call drawer function once for some but not all frames and in order', function() {
-        expect(drawingFn.calls.count()).not.toEqual(exampleFrames.length);
-        
-        drawingFn.calls.allArgs().forEach(function(args, index) {
-            expect(args[0]).toBe(exampleFrames[index]);
+        expect(drawingFnCalls.length).not.toEqual(exampleFrames.length);
+
+        drawingFnCalls.forEach(function(call, index) {
+            expect(call.keyframe).toBe(exampleFrames[index]);
         });
     });
-    
+
     it('Should call drawer function once for all left frames after resuming playing', function(done) {
         player.play();
-        
+
         player.on('end', function() {
-            expect(drawingFn.calls.count()).toEqual(exampleFrames.length);
-            drawingFn.calls.allArgs().forEach(function(args, index) {
-                expect(args[0]).toBe(exampleFrames[index]);
+            expect(drawingFnCalls.length).toEqual(exampleFrames.length);
+            drawingFnCalls.forEach(function(call, index) {
+                expect(call.keyframe).toBe(exampleFrames[index]);
             });
-            
+
             done();
         });
     });
@@ -359,12 +378,19 @@ describe('Player.prototype.stop test', function() {
                 return previousTime + (1000 / 60) + (Math.random() * (1000 / 60));
             }
         });
-    
+
         drawingFnCalls = [ ];
-        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframe, nextKeyframe, currentTime) {
-            drawingFnCalls.push({
-                realTime: Date.now(),
-                frameTime: keyframe.time
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart)).toFixed(3), 10)),
+                    index: index,
+                    keyframe: keyframe
+                };
+
+                drawingFnCalls.push(call);
             });
         });
         player = new Player(exampleFrames, drawingFn);
@@ -372,17 +398,17 @@ describe('Player.prototype.stop test', function() {
             playingStart = Date.now();
         });
         player.play();
-        
+
         setTimeout(function() {
             player.stop();
-            
+
             done();
         }, 10);
     });
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
-        
+
         player = null;
         drawingFn = null;
         playingStart = null;
@@ -390,24 +416,255 @@ describe('Player.prototype.stop test', function() {
     });
 
     it('Should call drawer function once for some but not all frames and in order', function() {
-        expect(drawingFn.calls.count()).not.toEqual(exampleFrames.length);
-        
-        drawingFn.calls.allArgs().forEach(function(args, index) {
-            expect(args[0]).toBe(exampleFrames[index]);
+        expect(drawingFnCalls.length).not.toEqual(exampleFrames.length);
+
+        drawingFnCalls.forEach(function(call, index) {
+            expect(call.keyframe).toBe(exampleFrames[index]);
         });
     });
-    
+
     it('Should start playing from start of the recording after calling play', function(done) {
         drawingFn.calls.reset();
-        
+        drawingFnCalls = [ ];
+
         player.play();
-        
+
         player.on('end', function() {
-            expect(drawingFn.calls.argsFor(0)[0]).toBe(exampleFrames[0]);
-            expect(drawingFn.calls.count()).toEqual(exampleFrames.length);
-            
+            expect(drawingFnCalls[0].keyframe).toBe(exampleFrames[0]);
+            expect(drawingFnCalls.length).toEqual(exampleFrames.length);
+
             done();
         });
+    });
+
+});
+
+
+describe('Player synchronization test', function() {
+    var framesCount = 200;
+    var player;
+    var drawingFn;
+    var drawingFnCalls;
+    var playingStart;
+
+    beforeEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        drawingFnCalls = [ ];
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((keyframe.time - (frameTime - playingStart)).toFixed(3), 10)),
+                    index: index
+                };
+
+                drawingFnCalls.push(call);
+            });
+        });
+    });
+
+    afterEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        player = null;
+        drawingFn = null;
+        playingStart = null;
+        drawingFnCalls = null;
+    });
+
+    function _maxTimeDiff(drawingFnCalls) {
+        return drawingFnCalls.filter(function(call) {
+            return (call.index === 0);
+        }).map(function(call) {
+            return call.timeDiff;
+        }).reduce(function(a,b) {
+            return Math.max(Math.abs(a), Math.abs(b));
+        });
+    }
+
+
+    function _createFrames(count, difference) {
+        var frames = [];
+
+        for(var i = 0; i < count; i++) {
+            frames[i] = {
+                index: i,
+                time: (frames[i - 1] ? frames[i - 1].time + difference : 0)
+            };
+        }
+
+        return frames.map(function(frame) {
+            frame.time = Math.round(frame.time);
+
+            return frame;
+        });
+    }
+
+
+    function _test(keyframesDiff, framesDiff, mixin) {
+        return function(done) {
+            var exampleFrames;
+
+            requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.INTERVAL, {
+                setInterval: window.setInterval.bind(window),
+                clearInterval: window.clearInterval.bind(window),
+                time: 1,
+                frameTime: function (previousTime) {
+                    return previousTime + framesDiff;
+                }
+            });
+
+            player = new Player(exampleFrames = _createFrames(framesCount, keyframesDiff), drawingFn);
+            player.on('start', function(startTime) {
+                playingStart = startTime;
+            });
+
+            player.play();
+
+            player.on('end', function() {
+                expect(drawingFnCalls.length).toEqual(framesCount);
+                expect(_maxTimeDiff(drawingFnCalls)).toBe(0);
+                
+                if('function' === typeof mixin) {
+                    mixin(keyframesDiff, framesDiff, exampleFrames);
+                }
+
+                done();
+            });
+        };
+    }
+
+
+    it('Should play exactly two keyframes per frame if time difference between keyframes is twice as less than difference between frames', _test(10, 20, function(keyframesDiff, framesDiff) {
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index) {
+            expect(keyframes.length).toEqual(2);
+        });
+    }));
+
+    it('Should play exactly two keyframes per frame if time difference between keyframes is four as less than difference between frames', _test(10, 40, function(keyframesDiff, framesDiff) {
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index) {
+            expect(keyframes.length).toEqual(4);
+        });
+    }));
+
+    it('Should play exactly one keyframe per each two frames if time difference between keyframes is twice as great than difference between frames', _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+        // -1 is because in call preceding the 400 last keyframe is emitted
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index, calls) {
+            if((index % 2) === 0) {
+                expect(keyframes.length).toEqual(1);
+
+                expect(keyframes[0]).toBe(exampleFrames[Math.floor(index / 2)]);
+            } else {
+                expect(keyframes.length).toEqual(0);
+            }
+        });
+    }));
+
+    it('Should play exactly one keyframe per each four frames if time difference between keyframes is four as great than difference between frames', _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+        // -1 is because in call preceding the 400 last keyframe is emitted
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 3);
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index, calls) {
+            if((index % 4) === 0) {
+                expect(keyframes.length).toEqual(1);
+
+                expect(keyframes[0]).toBe(exampleFrames[Math.floor(index / 4)]);
+            } else {
+                expect(keyframes.length).toEqual(0);
+            }
+        });
+    }));
+
+    it('Should emit keyframes for estimated frame time starting from frame time', function() {
+        var frameTime = 20;
+        var exampleFrames = [{
+            time: 0
+        }, {
+            time: 10
+        }, {
+            time: 20
+        }, {
+            time: 21
+        }, {
+            time: 39
+        }];
+
+        player = new Player(exampleFrames, drawingFn);
+
+        player.play();
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(2);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[0]);
+        expect(drawingFn.calls.argsFor(0)[0][1]).toBe(exampleFrames[1]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(3);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[2]);
+        expect(drawingFn.calls.argsFor(1)[0][1]).toBe(exampleFrames[3]);
+        expect(drawingFn.calls.argsFor(1)[0][2]).toBe(exampleFrames[4]);
+    });
+
+    it('Should emit all keyframes for time that passed between current and last frame even if it is bigger than estimated time', function() {
+        var frameTime = 20;
+        var exampleFrames = _createFrames(100, frameTime);
+
+        player = new Player(exampleFrames, drawingFn);
+
+        player.play();
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[0]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[1]);
+
+        // now two keyframes should be emitted - one for time from 1040 to 1060 and one for 1060 to 1080
+        requestAnimationFrameMock.trigger(1000 + (4 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(2);
+        expect(drawingFn.calls.argsFor(2)[0][0]).toBe(exampleFrames[2]);
+        expect(drawingFn.calls.argsFor(2)[0][1]).toBe(exampleFrames[3]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (5 * frameTime));
+        expect(drawingFn.calls.count()).toBe(4);
+        expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[4]);
     });
 
 });

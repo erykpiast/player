@@ -85,7 +85,6 @@ module.exports = function (grunt) {
                     dest: '<%= config.spec.bundle %>'
                 }],
                 options: {
-                    
                     plugin: [ 'proxyquireify/plugin' ]
                 }
             },

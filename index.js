@@ -110,9 +110,7 @@ module.exports = (function() {
                 var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
                 var nextKeyframe = this._keyframes[lastIndex + 1];
 
-                keyframes.forEach(function(keyframe, index, keyframes) {
-                    this._drawer(keyframe, keyframe[index + 1] || nextKeyframe, index, this._toMs(currentTime));
-                }, this);
+                this._drawer(keyframes, nextKeyframe, this._toMs(currentTime));
                 
                 if(keyframes[keyframes.length - 1] !== this._keyframes[this._keyframes.length - 1]) {
                     if(!this._isPaused) {
