@@ -104,13 +104,20 @@ module.exports = (function() {
             }
 
             if(!this._isPlaying || ('undefined' !== typeof fromTime)) {
+                if(this._seeking) {
+                    this._finishSeek();
+                }
+
+                var toForward = (this._direction === this.directions.FORWARD);
+
                 this._isPaused = false;
                 this._isPlaying = true;
 
                 this._recordingStartTime = this._toUs(fromTime) ||
-                    (this._direction === this.directions.FORWARD ? 0 : this._toUs(this._keyframes[this._keyframes.length - 1].time));
+                    (toForward ? 0 : this._toUs(this._keyframes[this._keyframes.length - 1].time));
                 this._lastRecordingTime = this._recordingStartTime;
                 this._playingStartTime = 0;
+                this._recordingEndTime = (toForward ? this._toUs(this._keyframes[this._keyframes.length - 1].time) : 0);
 
                 this._lastFrameTime = 0;
                 this._nextFrameDesiredTime = 0;
@@ -164,10 +171,38 @@ module.exports = (function() {
 
             if(this._isPlaying) {
                 if(this._seekingMode === this.seeking.PLAY_FRAMES) {
-                    
+                    // try to emit all frames from current to desired time with high speed
+                    // and continue playing from that point
+                    var recordingEndTime = this._toUs(toTime);
+
+                    var diff = recordingEndTime - this._lastRecordingTime;
+                    if(diff < 0) {
+                        this._previousDirection = this._direction;
+                        this._direction = this.directions.BACKWARD;
+                    } else if(diff > 0) {
+                        this._previousDirection = this._direction;
+                        this._direction = this.directions.FORWARD;
+                    } else {
+                        return;
+                    }
+
+                    // set seeking flag only if seeking makes sense (diff !== 0)
+                    this._isSeeking = true;
+
+                    this._previousSpeed = this._speed;
+                    this._speed = this._seekingSpeed;
+
+                    this._previousRecordingEndTime = this._recordingEndTime;
+                    this._recordingEndTime = recordingEndTime;
                 } else {
+                    // simply jump to desired time
                     this._lastRecordingTime = this._toUs(toTime);
                 }
+            } else {
+                // seek or not, that is a question
+                // if seek, do something like this
+                // this.play(toTime);
+                // this.pause();
             }
         },
         _frame: function(ct) {
@@ -197,24 +232,55 @@ module.exports = (function() {
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
+
+                // take desired recordingEndTime into account
+                if(toForward) {
+                    if(endKeyframeTime > this._recordingEndTime) {
+                        endKeyframeTime = this._recordingEndTime + 1;
+                    }
+                } else {
+                    if(endKeyframeTime < this._recordingEndTime) {
+                        endKeyframeTime = this._recordingEndTime - 1;
+                    }
+                }
                 
                 this._nextFrameDesiredTime = currentTime + frameDuration;
                 this._lastFrameTime = currentTime;
                 this._lastRecordingTime = endKeyframeTime;
 
                 var keyframes = this._getKeyframesForTimeRange(startKeyframeTime, endKeyframeTime, toForward);
+                var lastKeyframe = keyframes[keyframes.length - 1];
                 var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
                 var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
 
                 this._drawer(keyframes, nextKeyframe, this._toMs(currentTime));
                 
-                if(keyframes[keyframes.length - 1] !== this._keyframes[(toForward ? this._keyframes.length - 1 : 0)]) {
-                    if(!this._isPaused) {
+                if(!lastKeyframe ||
+                    (lastKeyframe &&
+                        (toForward ?
+                            this._toUs(lastKeyframe.time) < this._recordingEndTime :
+                            this._toUs(lastKeyframe.time) > this._recordingEndTime
+                        )
+                    )
+                ) {
+                // if some keyframes for the frame were found and the last is before desired recording end time
+                // continue playing
+                    if(!this._isPaused || this._isSeeking) {
                         this._requestedFrame = requestAnimationFrame(this._frame);
                     } else {
+                    // or if isPaused flag was set in the meantime, send the signal
                         this.emit('pause');
                     }
+                } else if(this._isSeeking) {
+                // if that was seeking, finish it
+                    this._finishSeek();
+
+                    if(!this._isPaused) {
+                    // if recording was played when seek signal came, continue playing
+                        this._requestedFrame = requestAnimationFrame(this._frame);
+                    }
                 } else {
+                // or just send end signal
                     this.emit('end');
                 }
             }
@@ -279,6 +345,18 @@ module.exports = (function() {
                     }
                 }
             };
+        },
+        _finishSeek: function() {
+            this._isSeeking = false;
+
+            this._recordingEndTime = this._previousRecordingEndTime;
+            delete this._previousRecordingEndTime;
+
+            this._direction = this._previousDirection;
+            delete this._previousDirection;
+
+            this._speed = this._previousSpeed;
+            delete this._previousSpeed;
         }
     });
 

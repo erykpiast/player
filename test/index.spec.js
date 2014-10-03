@@ -1,5 +1,5 @@
 /* global jasmine, describe, xdescribe, it, xit, expect, beforeEach, afterEach */
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 10e10; // really big number, because Infinity doesn't work
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 10e4; // really big number, because Infinity doesn't work
 
 var proxyquire = require('proxyquireify')(require);
 
@@ -78,7 +78,7 @@ describe('Player destroying test', function() {
 
         drawingFn = jasmine.createSpy('drawingFn');
 
-        player = new Player([ ], drawingFn);
+        player = new Player([ { time: 0 } ], drawingFn);
     });
 
     afterEach(function() {
