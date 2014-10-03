@@ -10,7 +10,7 @@ var Player = proxyquire('../index', {
 });
 
 
-xdescribe('Player class test', function() {
+describe('Player class test', function() {
 
     it('Should be a function and should be instantiated', function() {
         expect(typeof Player).toBe('function');
@@ -33,7 +33,7 @@ xdescribe('Player class test', function() {
 });
 
 
-xdescribe('Player instance test', function() {
+describe('Player instance test', function() {
     var player;
 
     beforeEach(function() {
@@ -69,7 +69,7 @@ xdescribe('Player instance test', function() {
 });
 
 
-xdescribe('Player destroying test', function() {
+describe('Player destroying test', function() {
     var player;
     var drawingFn;
 
@@ -130,7 +130,7 @@ xdescribe('Player destroying test', function() {
 });
 
 
-xdescribe('Player.prototype.play test', function() {
+describe('Player.prototype.play test', function() {
     var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
@@ -274,7 +274,7 @@ xdescribe('Player.prototype.play test', function() {
 });
 
 
-xdescribe('Player.prototype.play with various speeds test', function() {
+describe('Player.prototype.play with various speeds test', function() {
     var speed = 1;
     var player;
     var drawingFn;
@@ -402,7 +402,7 @@ xdescribe('Player.prototype.play with various speeds test', function() {
 });
 
 
-xdescribe('Player.prototype.pause test', function() {
+describe('Player.prototype.pause test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -490,7 +490,7 @@ xdescribe('Player.prototype.pause test', function() {
 });
 
 
-xdescribe('Player.prototype.stop test', function() {
+describe('Player.prototype.stop test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -642,7 +642,7 @@ describe('Player synchronization test', function() {
     }
 
 
-    function _test(keyframesDiff, framesDiff, mixin, backward) {
+    function _test(keyframesDiff, framesDiff, mixin) {
         return function(done) {
             var exampleFrames;
 
@@ -660,7 +660,7 @@ describe('Player synchronization test', function() {
                 playingStart = startTime;
             });
 
-            player.play(null, backward ? player.directions.BACKWARD : player.directions.FORWARD);
+            player.play();
 
             player.on('end', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
@@ -687,18 +687,6 @@ describe('Player synchronization test', function() {
                 expect(keyframes.length).toEqual(2);
             });
         }));
-        
-    it('Should play exactly two keyframes per frame if time difference between ' +
-        'keyframes is twice as less than difference between frames - BACKWARD',
-        _test(10, 20, function(keyframesDiff, framesDiff) {
-            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
-
-            drawingFn.calls.allArgs().map(function(args) {
-                return args[0]; // keyframes
-            }).forEach(function(keyframes) {
-                expect(keyframes.length).toEqual(2);
-            });
-        }), 'backward');
 
     it('Should play exactly two keyframes per frame if time difference between ' +
         'keyframes is four as less than difference between frames',
@@ -711,18 +699,6 @@ describe('Player synchronization test', function() {
                 expect(keyframes.length).toEqual(4);
             });
         }));
-        
-    it('Should play exactly two keyframes per frame if time difference between ' +
-        'keyframes is four as less than difference between frames - BACKWARD',
-        _test(10, 40, function(keyframesDiff, framesDiff) {
-            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
-
-            drawingFn.calls.allArgs().map(function(args) {
-                return args[0]; // keyframes
-            }).forEach(function(keyframes) {
-                expect(keyframes.length).toEqual(4);
-            });
-        }), 'backward');
 
     it('Should play exactly one keyframe per each two frames if time difference ' + 
         'between keyframes is twice as great than difference between frames',
@@ -742,28 +718,10 @@ describe('Player synchronization test', function() {
             }
         });
     }));
-    
-    it('Should play exactly one keyframe per each two frames if time difference ' + 
-        'between keyframes is twice as great than difference between frames - BACKWARD',
-        _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
-        // -1 is because in call preceding the 400 last keyframe is emitted
-        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
 
-        drawingFn.calls.allArgs().map(function(args) {
-            return args[0]; // keyframes
-        }).forEach(function(keyframes, index) {
-            if((index % 2) === 0) {
-                expect(keyframes.length).toEqual(1);
-
-                expect(keyframes[0]).toBe(exampleFrames[Math.floor(index / 2)]);
-            } else {
-                expect(keyframes.length).toEqual(0);
-            }
-        });
-    }), 'backward');
-
-    it('Should play exactly one keyframe per each four frames if time difference between keyframes is four as great than difference' +
-        'between frames', _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+    it('Should play exactly one keyframe per each four frames if time difference ' +
+        'between keyframes is four as great than difference between frames',
+        _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
         // -1 is because in call preceding the 400 last keyframe is emitted
         expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 3);
 
@@ -855,6 +813,246 @@ describe('Player synchronization test', function() {
         expect(drawingFn.calls.count()).toBe(4);
         expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
         expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[4]);
+    });
+
+});
+
+describe('Player synchronization test BACKWARD', function() {
+    var framesCount = 200;
+    var player;
+    var drawingFn;
+    var drawingFnCalls;
+    var playingStart;
+    var exampleFrames;
+
+    beforeEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        drawingFnCalls = [ ];
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            var lastKeyframeTime = exampleFrames[exampleFrames.length - 1].time;
+
+            keyframes.forEach(function(keyframe, index) {
+                var call = {
+                    realTime: frameTime,
+                    frameTime: keyframe.time,
+                    timeDiff: Math.abs(parseFloat((lastKeyframeTime - keyframe.time - (frameTime - playingStart)).toFixed(3), 10)),
+                    index: index
+                };
+
+                drawingFnCalls.push(call);
+            });
+        });
+    });
+
+    afterEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        player = null;
+        drawingFn = null;
+        playingStart = null;
+        drawingFnCalls = null;
+        exampleFrames = null;
+    });
+
+    function _maxTimeDiff(drawingFnCalls) {
+        return drawingFnCalls.filter(function(call) {
+            return (call.index === 0);
+        }).map(function(call) {
+            return call.timeDiff;
+        }).reduce(function(a,b) {
+            return Math.max(Math.abs(a), Math.abs(b));
+        });
+    }
+
+
+    function _createFrames(count, difference) {
+        var frames = [];
+
+        for(var i = 0; i < count; i++) {
+            frames[i] = {
+                index: i,
+                time: (frames[i - 1] ? frames[i - 1].time + difference : 0)
+            };
+        }
+
+        return frames.map(function(frame) {
+            frame.time = Math.round(frame.time);
+
+            return frame;
+        });
+    }
+
+
+    function _test(keyframesDiff, framesDiff, mixin) {
+        return function(done) {
+            requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.INTERVAL, {
+                setInterval: window.setInterval.bind(window),
+                clearInterval: window.clearInterval.bind(window),
+                time: 1,
+                frameTime: function (previousTime) {
+                    return previousTime + framesDiff;
+                }
+            });
+
+            player = new Player(exampleFrames = _createFrames(framesCount, keyframesDiff), drawingFn);
+            player.on('start', function(startTime) {
+                playingStart = startTime;
+            });
+
+            player.play(null, player.directions.BACKWARD);
+
+            player.on('end', function() {
+                expect(drawingFnCalls.length).toEqual(framesCount);
+                expect(_maxTimeDiff(drawingFnCalls)).toBe(0);
+                
+                if('function' === typeof mixin) {
+                    mixin(keyframesDiff, framesDiff, exampleFrames);
+                }
+
+                done();
+            });
+        };
+    }
+
+
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is twice as less than difference between frames',
+        _test(10, 20, function(keyframesDiff, framesDiff) {
+            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
+
+            drawingFn.calls.allArgs().map(function(args) {
+                return args[0]; // keyframes
+            }).forEach(function(keyframes) {
+                expect(keyframes.length).toEqual(2);
+            });
+        }));
+
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is four as less than difference between frames',
+        _test(10, 40, function(keyframesDiff, framesDiff) {
+            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
+
+            drawingFn.calls.allArgs().map(function(args) {
+                return args[0]; // keyframes
+            }).forEach(function(keyframes) {
+                expect(keyframes.length).toEqual(4);
+            });
+        }));
+
+    it('Should play exactly one keyframe per each two frames if time difference ' + 
+        'between keyframes is twice as great than difference between frames',
+        _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+        // -1 is because in call preceding the 400 last keyframe is emitted
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index) {
+            if((index % 2) === 0) {
+                expect(keyframes.length).toEqual(1);
+
+                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 1 -Math.floor(index / 2)]);
+            } else {
+                expect(keyframes.length).toEqual(0);
+            }
+        });
+    }));
+
+    it('Should play exactly one keyframe per each four frames if time difference ' +
+        'between keyframes is four as great than difference between frames',
+        _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+        // -1 is because in call preceding the 400 last keyframe is emitted
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 3);
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index) {
+            if((index % 4) === 0) {
+                expect(keyframes.length).toEqual(1);
+
+                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 1 -Math.floor(index / 4)]);
+            } else {
+                expect(keyframes.length).toEqual(0);
+            }
+        });
+    }));
+
+    it('Should emit keyframes for estimated frame time starting from frame time', function() {
+        var frameTime = 20;
+        exampleFrames = [{
+            time: 1
+        }, {
+            time: 19
+        }, {
+            time: 20
+        }, {
+            time: 30
+        }, {
+            time: 40
+        }];
+
+        player = new Player(exampleFrames, drawingFn);
+
+        player.play(null, player.directions.BACKWARD);
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(2);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[exampleFrames.length - 1]);
+        expect(drawingFn.calls.argsFor(0)[0][1]).toBe(exampleFrames[exampleFrames.length - 2]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(3);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[exampleFrames.length - 3]);
+        expect(drawingFn.calls.argsFor(1)[0][1]).toBe(exampleFrames[exampleFrames.length - 4]);
+        expect(drawingFn.calls.argsFor(1)[0][2]).toBe(exampleFrames[exampleFrames.length - 5]);
+    });
+
+    it('Should emit all keyframes for time that passed between current and last frame even if it is bigger than estimated time',
+    function() {
+        var frameTime = 20;
+        exampleFrames = _createFrames(100, frameTime);
+
+        player = new Player(exampleFrames, drawingFn);
+
+        player.play(null, player.directions.BACKWARD);
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[exampleFrames.length - 1]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[exampleFrames.length - 2]);
+
+        // now two keyframes should be emitted - one for time from 1040 to 1060 and one for 1060 to 1080
+        requestAnimationFrameMock.trigger(1000 + (4 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(2);
+        expect(drawingFn.calls.argsFor(2)[0][0]).toBe(exampleFrames[exampleFrames.length - 3]);
+        expect(drawingFn.calls.argsFor(2)[0][1]).toBe(exampleFrames[exampleFrames.length - 4]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (5 * frameTime));
+        expect(drawingFn.calls.count()).toBe(4);
+        expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[exampleFrames.length - 5]);
     });
 
 });
