@@ -130,7 +130,7 @@ xdescribe('Player destroying test', function() {
 });
 
 
-describe('Player.prototype.play test', function() {
+xdescribe('Player.prototype.play test', function() {
     var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
@@ -579,7 +579,7 @@ xdescribe('Player.prototype.stop test', function() {
 });
 
 
-xdescribe('Player synchronization test', function() {
+describe('Player synchronization test', function() {
     var framesCount = 200;
     var player;
     var drawingFn;
@@ -642,7 +642,7 @@ xdescribe('Player synchronization test', function() {
     }
 
 
-    function _test(keyframesDiff, framesDiff, mixin) {
+    function _test(keyframesDiff, framesDiff, mixin, backward) {
         return function(done) {
             var exampleFrames;
 
@@ -660,7 +660,7 @@ xdescribe('Player synchronization test', function() {
                 playingStart = startTime;
             });
 
-            player.play();
+            player.play(null, backward ? player.directions.BACKWARD : player.directions.FORWARD);
 
             player.on('end', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
@@ -676,7 +676,8 @@ xdescribe('Player synchronization test', function() {
     }
 
 
-    it('Should play exactly two keyframes per frame if time difference between keyframes is twice as less than difference between frames',
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is twice as less than difference between frames',
         _test(10, 20, function(keyframesDiff, framesDiff) {
             expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
 
@@ -686,8 +687,21 @@ xdescribe('Player synchronization test', function() {
                 expect(keyframes.length).toEqual(2);
             });
         }));
+        
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is twice as less than difference between frames - BACKWARD',
+        _test(10, 20, function(keyframesDiff, framesDiff) {
+            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
 
-    it('Should play exactly two keyframes per frame if time difference between keyframes is four as less than difference between frames',
+            drawingFn.calls.allArgs().map(function(args) {
+                return args[0]; // keyframes
+            }).forEach(function(keyframes) {
+                expect(keyframes.length).toEqual(2);
+            });
+        }), 'backward');
+
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is four as less than difference between frames',
         _test(10, 40, function(keyframesDiff, framesDiff) {
             expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
 
@@ -697,9 +711,22 @@ xdescribe('Player synchronization test', function() {
                 expect(keyframes.length).toEqual(4);
             });
         }));
+        
+    it('Should play exactly two keyframes per frame if time difference between ' +
+        'keyframes is four as less than difference between frames - BACKWARD',
+        _test(10, 40, function(keyframesDiff, framesDiff) {
+            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
 
-    it('Should play exactly one keyframe per each two frames if time difference between keyframes is twice as great than difference' +
-        'between frames', _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+            drawingFn.calls.allArgs().map(function(args) {
+                return args[0]; // keyframes
+            }).forEach(function(keyframes) {
+                expect(keyframes.length).toEqual(4);
+            });
+        }), 'backward');
+
+    it('Should play exactly one keyframe per each two frames if time difference ' + 
+        'between keyframes is twice as great than difference between frames',
+        _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
         // -1 is because in call preceding the 400 last keyframe is emitted
         expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
 
@@ -715,6 +742,25 @@ xdescribe('Player synchronization test', function() {
             }
         });
     }));
+    
+    it('Should play exactly one keyframe per each two frames if time difference ' + 
+        'between keyframes is twice as great than difference between frames - BACKWARD',
+        _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
+        // -1 is because in call preceding the 400 last keyframe is emitted
+        expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
+
+        drawingFn.calls.allArgs().map(function(args) {
+            return args[0]; // keyframes
+        }).forEach(function(keyframes, index) {
+            if((index % 2) === 0) {
+                expect(keyframes.length).toEqual(1);
+
+                expect(keyframes[0]).toBe(exampleFrames[Math.floor(index / 2)]);
+            } else {
+                expect(keyframes.length).toEqual(0);
+            }
+        });
+    }), 'backward');
 
     it('Should play exactly one keyframe per each four frames if time difference between keyframes is four as great than difference' +
         'between frames', _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
