@@ -1,5 +1,5 @@
 /* global jasmine, describe, xdescribe, it, xit, expect, beforeEach, afterEach */
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 10e4; // really big number, because Infinity doesn't work
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 10e5; // really big number, because Infinity doesn't work
 
 var proxyquire = require('proxyquireify')(require);
 
@@ -606,6 +606,7 @@ describe('Player synchronization test', function() {
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+        player.destroy();
 
         player = null;
         drawingFn = null;
@@ -817,6 +818,7 @@ describe('Player synchronization test', function() {
 
 });
 
+
 describe('Player synchronization test BACKWARD', function() {
     var framesCount = 200;
     var player;
@@ -847,6 +849,7 @@ describe('Player synchronization test BACKWARD', function() {
 
     afterEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+        player.destroy();
 
         player = null;
         drawingFn = null;
@@ -1053,6 +1056,173 @@ describe('Player synchronization test BACKWARD', function() {
         expect(drawingFn.calls.count()).toBe(4);
         expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
         expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[exampleFrames.length - 5]);
+    });
+
+});
+
+
+describe('Player.prototype.seek test', function() {
+    var player;
+    var drawingFn;
+    var drawingFnCalls;
+    var playingStart;
+
+    beforeEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        drawingFnCalls = [ ];
+        drawingFn = jasmine.createSpy('drawingFn').and.callFake(function(keyframes, nextKeyframe, frameTime) {
+            keyframes.forEach(function(keyframe, index) {
+                drawingFnCalls.push(keyframe);
+            });
+        });
+    });
+
+    afterEach(function() {
+        player.destroy();
+
+        player = null;
+        drawingFn = null;
+        playingStart = null;
+        drawingFnCalls = null;
+    });
+
+
+    function _createFrames(count, difference) {
+        var frames = [];
+
+        for(var i = 0; i < count; i++) {
+            frames[i] = {
+                index: i,
+                time: (frames[i - 1] ? frames[i - 1].time + difference : 0)
+            };
+        }
+
+        return frames.map(function(frame) {
+            frame.time = Math.round(frame.time);
+
+            return frame;
+        });
+    }
+
+    it('Should move to desired time after seeking in default mode', function() {
+        var frameTime = 20;
+        var exampleFrames = _createFrames(100, frameTime);
+
+        player = new Player(exampleFrames, drawingFn);
+
+        player.play();
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[0]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[1]);
+        
+        player.seek(exampleFrames[80].time);
+        
+        // next keyframes emitted from seeked position
+        requestAnimationFrameMock.trigger(1000 + (3 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(2)[0][0]).toBe(exampleFrames[80]);
+        
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (4 * frameTime));
+        expect(drawingFn.calls.count()).toBe(4);
+        expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[81]);
+    });
+    
+    it('Should move to desired time after seeking in PLAY_FRAMES mode', function() {
+        var frameTime = 20;
+        var exampleFrames = _createFrames(100, frameTime);
+
+        player = new Player(exampleFrames, drawingFn);
+        player.seekingMode = player.seeking.PLAY_FRAMES;
+
+        player.play();
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // first keyframes emitted
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[0]);
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[1]);
+
+        player.seek(exampleFrames[80].time);
+        
+        // next keyframes emitted from seeked position
+        requestAnimationFrameMock.trigger(1000 + (3 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(79);
+        expect(drawingFn.calls.argsFor(2)[0]).toEqual(exampleFrames.slice(2, 81));
+
+        // next keyframes emitted in normal way
+        requestAnimationFrameMock.trigger(1000 + (4 * frameTime));
+        expect(drawingFn.calls.count()).toBe(4);
+        expect(drawingFn.calls.argsFor(3)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(3)[0][0]).toBe(exampleFrames[81]);
+        
+        expect(drawingFnCalls.length).toBe(82);
+    });
+    
+    it('Should move to time before current after seeking in PLAY_FRAMES mode', function() {
+        var frameTime = 20;
+        var exampleFrames = _createFrames(100, frameTime);
+
+        player = new Player(exampleFrames, drawingFn);
+        player.seekingMode = player.seeking.PLAY_FRAMES;
+
+        player.play();
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(drawingFn.calls.count()).toBe(0);
+
+        // play for some time
+        for(var i = 1; i < 81; i++) {
+            requestAnimationFrameMock.trigger(1000 + (i * frameTime));
+            expect(drawingFn.calls.count()).toBe(i);
+            expect(drawingFn.calls.argsFor(i - 1)[0].length).toBe(1);
+            expect(drawingFn.calls.argsFor(i - 1)[0][0]).toEqual(exampleFrames[i - 1]);
+        }
+
+        // seek
+        player.seek(exampleFrames[40].time);
+        
+        // next keyframes emitted from current to seeked position
+        requestAnimationFrameMock.trigger(1000 + (81 * frameTime));
+        expect(drawingFn.calls.count()).toBe(81);
+        expect(drawingFn.calls.argsFor(80)[0].length).toBe(41);
+        expect(drawingFn.calls.argsFor(80)[0]).toEqual(exampleFrames.slice(40, 81).reverse());
+
+        // next keyframes emitted in normal way from seeked position
+        requestAnimationFrameMock.trigger(1000 + (82 * frameTime));
+        expect(drawingFn.calls.count()).toBe(82);
+        expect(drawingFn.calls.argsFor(81)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(81)[0][0]).toBe(exampleFrames[40]);
+        
+        //expect(drawingFnCalls.length).toBe(82);
     });
 
 });

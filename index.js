@@ -7,7 +7,7 @@ module.exports = (function() {
     var util = require('util');
 
 
-    function Player(keyframes, drawer) {
+    function Player(keyframes, drawer, options) {
         if(!keyframes || !Array.isArray(keyframes)) {
             throw new Error('keyframes must be an array');
         }
@@ -15,6 +15,24 @@ module.exports = (function() {
         if(!drawer || ('function' !== typeof drawer)) {
             throw new Error('drawer must be a function');
         }
+        
+        // rewrite options >>
+        var defaults = {
+            speed: 1,
+            seekingSpeed: 100,
+            seekingMode: this.seeking.OMIT_FRAMES
+        };
+        
+        if(!options || ('object' !== typeof options)) {
+            options = defaults;
+        } else {
+            options = extend(defaults, options);
+        }
+        
+        this._speed = options.speed;
+        this._seekingMode = options.seekingMode;
+        this._seekingSpeed = options.seekingSpeed;
+        // << rewrite options
         
         this._keyframes = keyframes.sort(function(a, b) {
             return (a.time - b.time);
@@ -24,7 +42,6 @@ module.exports = (function() {
 
         this._frame = this._frame.bind(this);
 
-        this._speed = 1;
         this._desiredFrameRate = 60;
         this._maxFrameTime = (1000 / this._desiredFrameRate * 2);
         this._lastRecordingTime = -1;
@@ -33,10 +50,8 @@ module.exports = (function() {
         this._lastFrameTime = 0;
 
         this._destroyed = false;
-
+        
         this._direction = this.directions.FORWARD;
-        this._seekingMode = this.seeking.OMIT_FRAMES;
-        this._seekingSpeed = 100;
 
         Object.defineProperties(this, {
             speed: this._createSpeedProperty({
@@ -105,7 +120,7 @@ module.exports = (function() {
 
             if(!this._isPlaying || ('undefined' !== typeof fromTime)) {
                 if(this._seeking) {
-                    this._finishSeek();
+                    this._finishSeeking();
                 }
 
                 var toForward = (this._direction === this.directions.FORWARD);
@@ -201,6 +216,7 @@ module.exports = (function() {
             } else {
                 // seek or not, that is a question
                 // if seek, do something like this
+                // this._isSeeking = true;
                 // this.play(toTime);
                 // this.pause();
             }
@@ -232,7 +248,7 @@ module.exports = (function() {
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
-
+                
                 // take desired recordingEndTime into account
                 if(toForward) {
                     if(endKeyframeTime > this._recordingEndTime) {
@@ -273,7 +289,7 @@ module.exports = (function() {
                     }
                 } else if(this._isSeeking) {
                 // if that was seeking, finish it
-                    this._finishSeek();
+                    this._finishSeeking();
 
                     if(!this._isPaused) {
                     // if recording was played when seek signal came, continue playing
@@ -303,21 +319,23 @@ module.exports = (function() {
             return Math.round(value * this._speed, 10);
         },
         _toUs: function(milliseconds) {
-            return parseInt(milliseconds * 10e2, 10);
+            return Math.round(milliseconds * 10e2);
         },
         _toMs: function(microseconds) {
-            return parseFloat((microseconds / 10e2).toFixed(3), 10);
+            return (Math.round(microseconds) / 10e2);
         },
         _createSpeedProperty: function(conf) {
+            var setVal = this[conf.privateName];
+            
             return {
                 get: function() {
-                    return this[conf.privateName];
+                    return setVal;
                 },
                 set: function(value) {
                     var parsed = parseFloat(value, 10);
 
                     if(!isNaN(parsed)) {
-                        this[conf.privateName] = parsed;
+                        this[conf.privateName] = setVal = parsed;
 
                         return parsed;
                     } else {
@@ -346,12 +364,12 @@ module.exports = (function() {
                 }
             };
         },
-        _finishSeek: function() {
+        _finishSeeking: function() {
             this._isSeeking = false;
 
             this._recordingEndTime = this._previousRecordingEndTime;
             delete this._previousRecordingEndTime;
-
+            
             this._direction = this._previousDirection;
             delete this._previousDirection;
 
