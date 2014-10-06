@@ -179,6 +179,7 @@ describe('Player.prototype.play test', function() {
     });
 
     afterEach(function() {
+        player.destroy();
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
         player = null;
@@ -307,6 +308,7 @@ describe('Player.prototype.play with various speeds test', function() {
     });
 
     afterEach(function() {
+        player.destroy();
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
         player = null;
@@ -454,10 +456,12 @@ describe('Player.prototype.pause test', function() {
             player.pause();
 
             done();
-        }, 10);
+        }, 20); // !!! 20 ms is the lowest possible value that works correctly in PhanomJS; don't ask why.
     });
 
     afterEach(function() {
+        player.stop();
+        player.destroy();
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
         player = null;
@@ -546,6 +550,7 @@ describe('Player.prototype.stop test', function() {
     });
 
     afterEach(function() {
+        player.destroy();
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
         player = null;

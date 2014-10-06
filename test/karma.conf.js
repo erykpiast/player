@@ -15,7 +15,12 @@ module.exports = function (config) {
         
         browserNoActivityTimeout: 10e5,
 
-        browsers: [ 'PhantomJS'/*, 'Chrome'*/ ],
+        /*
+        browsers: [ 'Chrome' ],
+        singleRun: false
+        /*/
+        browsers: [ 'PhantomJS' ],
         singleRun: true
+        //*/
     });
 };

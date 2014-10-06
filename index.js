@@ -49,7 +49,7 @@ module.exports = (function() {
         this._framesCount = 0;
         this._lastFrameTime = 0;
 
-        this._destroyed = false;
+        this._isDestroyed = false;
         
         this._direction = this.directions.FORWARD;
 
@@ -66,6 +66,18 @@ module.exports = (function() {
                 publicName: 'seekingMode',
                 privateName: '_seekingMode',
                 enumName: 'seeking'
+            }),
+            direction: this._createGetter({
+                publicName: 'direction',
+                privateName: '_direction'
+            }),
+            isPlaying: this._createGetter({
+                publicName: 'isPlaying',
+                privateName: '_isPlaying' 
+            }),
+            isSeeking: this._createGetter({
+                publicName: 'isSeeking',
+                privateName: '_isSeeking' 
             })
         });
     }
@@ -82,7 +94,7 @@ module.exports = (function() {
             BACKWARD: 2
         },
         destroy: function() {
-            if(this._destroyed) {
+            if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
@@ -93,7 +105,13 @@ module.exports = (function() {
             delete this._drawer;
             delete this._frame;
 
-            this._destroyed = true;
+            if(this._requestedFrame) {
+                cancelAnimationFrame(this._requestedFrame);
+
+                delete this._requestedFrame;
+            }
+
+            this._isDestroyed = true;
         },
         /* @function play - start playing of the recording or resume it when it's paused
          * @param {number} [fromTime=0] - a positive integer, time in milliseconds, starting point of playing
@@ -104,7 +122,7 @@ module.exports = (function() {
          * @property {object} directions.BACKWARD - indicates playing from the last to the first frame
          */
         play: function(fromTime, direction) {
-            if(this._destroyed) {
+            if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
@@ -138,6 +156,8 @@ module.exports = (function() {
                 this._nextFrameDesiredTime = 0;
 
                 this._requestedFrame = requestAnimationFrame(this._frame);
+
+                this.emit('play');
             } else if(this._isPaused) {
                 this._isPaused = false;
                 
@@ -145,27 +165,34 @@ module.exports = (function() {
                 this._nextFrameDesiredTime = 0;
                 
                 this._requestedFrame = requestAnimationFrame(this._frame);
+
+                this.emit('resume');
             }
         },
         pause: function() {
-            if(this._destroyed) {
+            if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
             if(this._isPlaying && !this._isPaused) {
                 this._isPaused = true;
+
+                this.emit('pause');
             }
         },
         stop: function() {
-            if(this._destroyed) {
+            if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
+            // it seems like sometimes frame is requested but isPlaying flag is not set
             if(this._isPlaying) {
                 this._isPlaying = false;
                 this._isPaused = false;
                 
                 cancelAnimationFrame(this._requestedFrame);
+
+                this.emit('stop');
             }
         },
         /* @function seek - Allows to move video to specified time
@@ -180,7 +207,7 @@ module.exports = (function() {
          * 
          */
         seek: function(toTime) {
-            if(this._destroyed) {
+            if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
@@ -209,6 +236,10 @@ module.exports = (function() {
 
                     this._previousRecordingEndTime = this._recordingEndTime;
                     this._recordingEndTime = recordingEndTime;
+
+                    if(this._isPaused) {
+                        this._requestedFrame = requestAnimationFrame(this._frame);
+                    }
                 } else {
                     // simply jump to desired time
                     this._lastRecordingTime = this._toUs(toTime);
@@ -222,6 +253,10 @@ module.exports = (function() {
             }
         },
         _frame: function(ct) {
+            if(this._isPaused && !this._isSeeking) {
+                return;
+            }
+
             var currentTime = this._toUs(ct);
             
             if(!this._lastFrameTime) {
@@ -241,7 +276,10 @@ module.exports = (function() {
                 
                 var lastFrameDuration = currentTime - this._lastFrameTime;
                 this._framesCount++;
-                this._averageFrameDuration += (lastFrameDuration - this._averageFrameDuration) / this._framesCount;
+                this._averageFrameDuration = Math.max(
+                    this._averageFrameDuration / 2,
+                    this._averageFrameDuration + (lastFrameDuration - this._averageFrameDuration) / this._framesCount
+                );
 
                 var frameStartTime = this._nextFrameDesiredTime;
                 var frameDuration = Math.max(currentTime - frameStartTime, Math.round(this._averageFrameDuration));
@@ -259,10 +297,6 @@ module.exports = (function() {
                         endKeyframeTime = this._recordingEndTime - 1;
                     }
                 }
-                
-                this._nextFrameDesiredTime = currentTime + frameDuration;
-                this._lastFrameTime = currentTime;
-                this._lastRecordingTime = endKeyframeTime;
 
                 var keyframes = this._getKeyframesForTimeRange(startKeyframeTime, endKeyframeTime, toForward);
                 var lastKeyframe = keyframes[keyframes.length - 1];
@@ -271,12 +305,13 @@ module.exports = (function() {
 
                 this._drawer(keyframes, nextKeyframe, this._toMs(currentTime));
                 
-                if(!lastKeyframe ||
-                    (lastKeyframe &&
+                if((lastKeyframe &&
                         (toForward ?
                             this._toUs(lastKeyframe.time) < this._recordingEndTime :
                             this._toUs(lastKeyframe.time) > this._recordingEndTime
                         )
+                    ) || (
+                        !lastKeyframe && (this._lastRecordingTime !== endKeyframeTime)
                     )
                 ) {
                 // if some keyframes for the frame were found and the last is before desired recording end time
@@ -297,8 +332,14 @@ module.exports = (function() {
                     }
                 } else {
                 // or just send end signal
+                    this._isPlaying = false;
+
                     this.emit('end');
                 }
+                
+                this._nextFrameDesiredTime = currentTime + frameDuration;
+                this._lastFrameTime = currentTime;
+                this._lastRecordingTime = endKeyframeTime;
             }
         },
         _getKeyframesForTimeRange: function(st, et, toForward) {
@@ -324,6 +365,18 @@ module.exports = (function() {
         _toMs: function(microseconds) {
             return (Math.round(microseconds) / 10e2);
         },
+        _finishSeeking: function() {
+            this._isSeeking = false;
+
+            this._recordingEndTime = this._previousRecordingEndTime;
+            delete this._previousRecordingEndTime;
+            
+            this._direction = this._previousDirection;
+            delete this._previousDirection;
+
+            this._speed = this._previousSpeed;
+            delete this._previousSpeed;
+        },
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
             
@@ -334,10 +387,12 @@ module.exports = (function() {
                 set: function(value) {
                     var parsed = parseFloat(value, 10);
 
-                    if(!isNaN(parsed)) {
-                        this[conf.privateName] = setVal = parsed;
+                    if(!isNaN(parsed) && isFinite(parsed)) {
+                        if(parsed > 0) {
+                            this[conf.privateName] = setVal = parsed;
 
-                        return parsed;
+                            return parsed;
+                        }
                     } else {
                         throw new TypeError(conf.publicName + ' must be a number');
                     }
@@ -364,17 +419,15 @@ module.exports = (function() {
                 }
             };
         },
-        _finishSeeking: function() {
-            this._isSeeking = false;
-
-            this._recordingEndTime = this._previousRecordingEndTime;
-            delete this._previousRecordingEndTime;
-            
-            this._direction = this._previousDirection;
-            delete this._previousDirection;
-
-            this._speed = this._previousSpeed;
-            delete this._previousSpeed;
+        _createGetter: function(conf) {
+            return {
+                get: function() {
+                    return this[conf.privateName];
+                },
+                set: function() {
+                    throw new Error('you can not set read-only property ' + conf.publicName);
+                }
+            };
         }
     });
 

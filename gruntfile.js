@@ -75,8 +75,10 @@ module.exports = function (grunt) {
             ]
         },
         browserify: {
-            browserifyOptions: {
-                debug: true
+            options: {
+                browserifyOptions: {
+                    debug: true
+                }
             },
             demo: {
                 files: [{
