@@ -18,7 +18,7 @@ var keyframes = (function() {
             time: keyframes[i - 1] ? keyframes[i - 1].time + 1000 : 0
         };
         keyframe.type = 'create';
-        keyframe.color = _pad(Math.round(255 / 100 * i).toString(16), 2);
+        keyframe.color = _pad(Math.round(255 / 100 * i).toString(16), 2) + '00' + _pad(Math.round(255 - 255 / 100 * i).toString(16), 2);
     }
 
     return keyframes;
@@ -135,11 +135,11 @@ function _reverse(keyframe) {
 function _draw(keyframe) {
     switch(keyframe.type) {
         case 'create':
-            var tile = _createTile(keyframe.index, (keyframe.color + keyframe.color + keyframe.color));
+            var tile = _createTile(keyframe.index, keyframe.color);
 
             stage.appendChild(tile);
         break;
-        case 'removal': 
+        case 'removal':
             var tile = stage.querySelector('[data-index="'+ keyframe.index +'"]');
 
             if(tile) {
