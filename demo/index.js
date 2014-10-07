@@ -4,6 +4,7 @@ var extend = require('extend');
 var Player = require('../index');
 
 var tileSize = 50;
+var initialSpeed = 10;
 
 var keyframes = (function() {
     function _pad(number, digits) {
@@ -31,12 +32,28 @@ var ui = (function() {
     var pause = document.createElement('button');
 
     var speedContainer = document.createElement('div');
+    $(speedContainer).css({
+        display: 'inline-block'
+    });
+
     var incSpeed = document.createElement('button');
     var decSpeed = document.createElement('button');
     var currentSpeed = document.createElement('span');
     speedContainer.appendChild(decSpeed);
     speedContainer.appendChild(currentSpeed);
     speedContainer.appendChild(incSpeed);
+
+
+    var fpsContainer = document.createElement('div');
+    $(fpsContainer).css({
+        display: 'inline-block'
+    });
+
+    var currentFps = document.createElement('span');
+    currentFps.className = 'current-fps';
+    fpsContainer.appendChild(document.createTextNode('FPS: '));
+    fpsContainer.appendChild(currentFps);
+
 
     var timeline = document.createElement('input');
     $(timeline).attr({
@@ -56,13 +73,17 @@ var ui = (function() {
 
         player.seek(desiredTime);
     }).css({
-        width: (tileSize * 10) + 'px'
+        width: (tileSize * 10) + 'px',
+        display: 'block'
     });
+
 
     ui.appendChild(play);
     ui.appendChild(pause);
     ui.appendChild(speedContainer);
+    ui.appendChild(fpsContainer);
     ui.appendChild(timeline);
+
 
     $(play).on('click', function() {
         player.play();
@@ -72,7 +93,7 @@ var ui = (function() {
         player.pause();
     }).text('Pause');
 
-    $(currentSpeed).text(10);
+    $(currentSpeed).text(initialSpeed);
 
     $(incSpeed).on('click', function() {
         player.speed = Math.pow(2, Math.round(Math.log2(player.speed)) + 1);
@@ -153,29 +174,37 @@ function _draw(keyframe) {
 }
 
 
-function _updateTimeline(keyframe) {
+function _updateTimeline(currentTime) {
     var timeline = ui.querySelector('input[type=range]');
 
-    timeline.value = (keyframe.time / keyframes[keyframes.length - 1].time);
+    timeline.value = (currentTime / keyframes[keyframes.length - 1].time);
 }
 
 
-var player = new Player(keyframes, function(keyframes) {
+function _updateFpsMeter(fps) {
+    $('.current-fps').text(fps.toFixed(2));
+}
+
+
+var recordingEndTime = keyframes[keyframes.length - 1].time;
+var player = new Player(keyframes, function(keyframes, nextKeyframe, currentTime) {
     keyframes.forEach(function(keyframe) {
          if(player.direction === player.directions.BACKWARD) {
             keyframe = _reverse(keyframe);
         }
 
         _draw(keyframe);
-
-        if(!player.isSeeking) {
-            _updateTimeline(keyframe);
-        }
     });
+
+    if(!player.isSeeking) {
+        _updateTimeline(currentTime);
+    }
+
+    _updateFpsMeter(player.fps);
 });
 player.seekingMode = player.seeking.PLAY_FRAMES;
 player.seekingSpeed = 1024;
-player.speed = 20;
+player.speed = initialSpeed;
 
 player.on('end', function() {
     console.debug('playing finished');

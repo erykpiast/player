@@ -78,6 +78,12 @@ module.exports = (function() {
             isSeeking: this._createGetter({
                 publicName: 'isSeeking',
                 privateName: '_isSeeking' 
+            }),
+            fps: this._createGetter({
+                publicName: 'fps',
+                get: function() {
+                    return (1000000 / this._averageFrameDuration);
+                }
             })
         });
     }
@@ -218,32 +224,39 @@ module.exports = (function() {
                     var recordingEndTime = this._toUs(toTime);
 
                     var diff = recordingEndTime - this._lastRecordingTime;
+                    var dir;
                     if(diff < 0) {
-                        this._previousDirection = this._direction;
-                        this._direction = this.directions.BACKWARD;
+                        dir = this.directions.BACKWARD;
                     } else if(diff > 0) {
-                        this._previousDirection = this._direction;
-                        this._direction = this.directions.FORWARD;
+                        dir = this.directions.FORWARD;
                     } else {
+                    // start only if seeking makes sense (diff !== 0)
                         return;
                     }
 
-                    // set seeking flag only if seeking makes sense (diff !== 0)
-                    this._isSeeking = true;
+                    if(!this._isSeeking) {
+                        this._isSeeking = true;
 
-                    this._previousSpeed = this._speed;
-                    this._speed = this._seekingSpeed;
+                        // store settings for normal playing
+                        this._previousDirection = this._direction;
+                        this._previousRecordingEndTime = this._recordingEndTime;
+                        this._previousSpeed = this._speed;
 
-                    this._previousRecordingEndTime = this._recordingEndTime;
-                    this._recordingEndTime = recordingEndTime;
+                        this._speed = this._seekingSpeed;
 
-                    if(this._isPaused) {
-                        this._requestedFrame = requestAnimationFrame(this._frame);
+                        if(this._isPaused) {
+                            this._requestedFrame = requestAnimationFrame(this._frame);
+                        }
                     }
+
+                    this._direction = dir;
+                    this._recordingEndTime = recordingEndTime;
                 } else {
                     // simply jump to desired time
                     this._lastRecordingTime = this._toUs(toTime);
                 }
+
+                this.emit('seekingstart');
             } else {
                 // seek or not, that is a question
                 // if seek, do something like this
@@ -276,16 +289,17 @@ module.exports = (function() {
                 
                 var lastFrameDuration = currentTime - this._lastFrameTime;
                 this._framesCount++;
-                this._averageFrameDuration = Math.max(
-                    this._averageFrameDuration / 2,
-                    this._averageFrameDuration + (lastFrameDuration - this._averageFrameDuration) / this._framesCount
-                );
+
+                if(lastFrameDuration) {
+                    this._averageFrameDuration += ((lastFrameDuration - this._averageFrameDuration) / this._framesCount);
+                }
 
                 var frameStartTime = this._nextFrameDesiredTime;
                 var frameDuration = Math.max(currentTime - frameStartTime, Math.round(this._averageFrameDuration));
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
+                var frameRange = Math.abs(startKeyframeTime - endKeyframeTime);
                 
                 // take desired recordingEndTime into account
                 if(toForward) {
@@ -303,7 +317,7 @@ module.exports = (function() {
                 var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
                 var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
 
-                this._drawer(keyframes, nextKeyframe, this._toMs(currentTime));
+                this._drawer(keyframes, nextKeyframe, this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1)));
                 
                 if((lastKeyframe &&
                         (toForward ?
@@ -376,6 +390,8 @@ module.exports = (function() {
 
             this._speed = this._previousSpeed;
             delete this._previousSpeed;
+
+            this.emit('seekingend');
         },
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
@@ -421,12 +437,12 @@ module.exports = (function() {
         },
         _createGetter: function(conf) {
             return {
-                get: function() {
+                get:  (('function' === typeof conf.get) ? conf.get : function() {
                     return this[conf.privateName];
-                },
-                set: function() {
+                }),
+                set: (('function' === typeof conf.set) ? conf.set : function() {
                     throw new Error('you can not set read-only property ' + conf.publicName);
-                }
+                })
             };
         }
     });
