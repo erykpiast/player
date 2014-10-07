@@ -45,7 +45,6 @@
     "supernew": true,
     "devel": true,
     "node": true,
-    "jquery": true,
     "white": false,
     "laxbreak": true,
     "validthis": true

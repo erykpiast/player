@@ -17,23 +17,20 @@ module.exports = (function() {
         }
         
         // rewrite options >>
-        var defaults = {
+        this.defaults = {
             speed: 1,
             seekingSpeed: 100,
             seekingMode: this.seeking.OMIT_FRAMES
         };
         
-        if(!options || ('object' !== typeof options)) {
-            options = defaults;
-        } else {
-            options = extend(defaults, options);
-        }
+        options = extend({ }, this.defaults, options);
         
         this._speed = options.speed;
         this._seekingMode = options.seekingMode;
         this._seekingSpeed = options.seekingSpeed;
         // << rewrite options
         
+        // sort keyframes descending by time
         this._keyframes = keyframes.sort(function(a, b) {
             return (a.time - b.time);
         });
@@ -53,6 +50,9 @@ module.exports = (function() {
         
         this._direction = this.directions.FORWARD;
 
+        this._state = this.states.STOPPED;
+
+        // public properties (with getters and/or setters)
         Object.defineProperties(this, {
             speed: this._createSpeedProperty({
                 publicName: 'speed',
@@ -71,18 +71,38 @@ module.exports = (function() {
                 publicName: 'direction',
                 privateName: '_direction'
             }),
+            state: this._createGetter({
+                publicName: 'state',
+                privateName: '_state' 
+            }),
+            isStopped: this._createGetter({
+                publicName: 'isStopped',
+                get: function() {
+                    return (this._state === this.states.STOPPED);
+                }
+            }),
             isPlaying: this._createGetter({
                 publicName: 'isPlaying',
-                privateName: '_isPlaying' 
+                get: function() {
+                    return (this._state === this.states.PLAYING);
+                }
+            }),
+            isPaused: this._createGetter({
+                publicName: 'isPaused',
+                get: function() {
+                    return (this._state === this.states.PAUSED);
+                }
             }),
             isSeeking: this._createGetter({
                 publicName: 'isSeeking',
-                privateName: '_isSeeking' 
+                get: function() {
+                    return this._isSeeking;
+                }
             }),
             fps: this._createGetter({
                 publicName: 'fps',
                 get: function() {
-                    return (1000000 / this._averageFrameDuration);
+                    return ((1000 * 1000) / this._averageFrameDuration);
                 }
             })
         });
@@ -98,6 +118,11 @@ module.exports = (function() {
         directions: {
             FORWARD: 1,
             BACKWARD: 2
+        },
+        states: {
+            STOPPED: 1,
+            PLAYING: 2,
+            PAUSED: 3
         },
         destroy: function() {
             if(this._isDestroyed) {
@@ -142,46 +167,44 @@ module.exports = (function() {
                 }
             }
 
-            if(!this._isPlaying || ('undefined' !== typeof fromTime)) {
-                if(this._seeking) {
+            if('undefined' !== typeof fromTime) {
+                this._state = this.states.PLAYING;
+
+                this.seek(fromTime);
+            } else if(this._state === this.states.PAUSED) {
+                this._lastFrameTime = 0;
+                this._nextFrameDesiredTime = 0;
+
+                this.emit('resume');
+            } else if(this._state !== this.states.PLAYING) {
+                if(this._isSeeking) {
                     this._finishSeeking();
                 }
 
                 var toForward = (this._direction === this.directions.FORWARD);
 
-                this._isPaused = false;
-                this._isPlaying = true;
-
-                this._recordingStartTime = this._toUs(fromTime) ||
-                    (toForward ? 0 : this._toUs(this._keyframes[this._keyframes.length - 1].time));
-                this._lastRecordingTime = this._recordingStartTime;
                 this._playingStartTime = 0;
+                this._recordingStartTime = this._lastRecordingTime;
                 this._recordingEndTime = (toForward ? this._toUs(this._keyframes[this._keyframes.length - 1].time) : 0);
 
                 this._lastFrameTime = 0;
                 this._nextFrameDesiredTime = 0;
 
-                this._requestedFrame = requestAnimationFrame(this._frame);
-
                 this.emit('play');
-            } else if(this._isPaused) {
-                this._isPaused = false;
-                
-                this._lastFrameTime = 0;
-                this._nextFrameDesiredTime = 0;
-                
-                this._requestedFrame = requestAnimationFrame(this._frame);
-
-                this.emit('resume');
+            } else {
+                return;
             }
+
+            this._state = this.states.PLAYING;
+            this._requestedFrame = requestAnimationFrame(this._frame);
         },
         pause: function() {
             if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
-            if(this._isPlaying && !this._isPaused) {
-                this._isPaused = true;
+            if(this._state === this.states.PLAYING) {
+                this._state = this.states.PAUSED;
 
                 this.emit('pause');
             }
@@ -192,9 +215,8 @@ module.exports = (function() {
             }
 
             // it seems like sometimes frame is requested but isPlaying flag is not set
-            if(this._isPlaying) {
-                this._isPlaying = false;
-                this._isPaused = false;
+            if(this._state !== this.states.STOPPED) {
+                this._state = this.states.STOPPED;
                 
                 cancelAnimationFrame(this._requestedFrame);
 
@@ -217,7 +239,7 @@ module.exports = (function() {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
-            if(this._isPlaying) {
+            if(this._state !== this.states.STOPPED) {
                 if(this._seekingMode === this.seeking.PLAY_FRAMES) {
                     // try to emit all frames from current to desired time with high speed
                     // and continue playing from that point
@@ -244,7 +266,7 @@ module.exports = (function() {
 
                         this._speed = this._seekingSpeed;
 
-                        if(this._isPaused) {
+                        if(this._state === this.states.PAUSED) {
                             this._requestedFrame = requestAnimationFrame(this._frame);
                         }
                     }
@@ -266,7 +288,7 @@ module.exports = (function() {
             }
         },
         _frame: function(ct) {
-            if(this._isPaused && !this._isSeeking) {
+            if((this._state === this.states.PAUSED) && !this._isSeeking) {
                 return;
             }
 
@@ -317,7 +339,7 @@ module.exports = (function() {
                 var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
                 var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
 
-                this._drawer(keyframes, nextKeyframe, this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1)));
+                this._drawer(keyframes, nextKeyframe, this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1)), this._toMs(currentTime));
                 
                 if((lastKeyframe &&
                         (toForward ?
@@ -330,7 +352,7 @@ module.exports = (function() {
                 ) {
                 // if some keyframes for the frame were found and the last is before desired recording end time
                 // continue playing
-                    if(!this._isPaused || this._isSeeking) {
+                    if((this._state === this.states.PLAYING) || this._isSeeking) {
                         this._requestedFrame = requestAnimationFrame(this._frame);
                     } else {
                     // or if isPaused flag was set in the meantime, send the signal
@@ -340,13 +362,13 @@ module.exports = (function() {
                 // if that was seeking, finish it
                     this._finishSeeking();
 
-                    if(!this._isPaused) {
+                    if(this._state === this.states.PLAYING) {
                     // if recording was played when seek signal came, continue playing
                         this._requestedFrame = requestAnimationFrame(this._frame);
                     }
                 } else {
                 // or just send end signal
-                    this._isPlaying = false;
+                    this._state = this.states.STOPPED;
 
                     this.emit('end');
                 }

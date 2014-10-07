@@ -6,6 +6,8 @@ var Player = require('../index');
 var tileSize = 50;
 var initialSpeed = 10;
 
+var player;
+
 var keyframes = (function() {
     function _pad(number, digits) {
         return new Array(Math.max(digits - String(number).length + 1, 0)).join(0) + number;
@@ -186,8 +188,7 @@ function _updateFpsMeter(fps) {
 }
 
 
-var recordingEndTime = keyframes[keyframes.length - 1].time;
-var player = new Player(keyframes, function(keyframes, nextKeyframe, currentTime) {
+player = new Player(keyframes, function(keyframes, nextKeyframe, currentRecordingTime) {
     keyframes.forEach(function(keyframe) {
          if(player.direction === player.directions.BACKWARD) {
             keyframe = _reverse(keyframe);
@@ -197,7 +198,7 @@ var player = new Player(keyframes, function(keyframes, nextKeyframe, currentTime
     });
 
     if(!player.isSeeking) {
-        _updateTimeline(currentTime);
+        _updateTimeline(currentRecordingTime);
     }
 
     _updateFpsMeter(player.fps);
