@@ -11,25 +11,27 @@ module.exports = (function() {
         if(!keyframes || !Array.isArray(keyframes)) {
             throw new Error('keyframes must be an array');
         }
-        
+
         if(!drawer || ('function' !== typeof drawer)) {
             throw new Error('drawer must be a function');
         }
-        
+
         // rewrite options >>
         this.defaults = {
             speed: 1,
             seekingSpeed: 100,
-            seekingMode: this.seeking.OMIT_FRAMES
+            seekingMode: this.seeking.OMIT_FRAMES,
+            lastFramesForAverage: 5
         };
-        
+
         options = extend({ }, this.defaults, options);
-        
+
         this._speed = options.speed;
         this._seekingMode = options.seekingMode;
         this._seekingSpeed = options.seekingSpeed;
+        this._lastFramesForAverage = options.lastFramesForAverage;
         // << rewrite options
-        
+
         // sort keyframes descending by time
         this._keyframes = keyframes.sort(function(a, b) {
             return (a.time - b.time);
@@ -42,12 +44,13 @@ module.exports = (function() {
         this._desiredFrameRate = 60;
         this._maxFrameTime = (1000 / this._desiredFrameRate * 2);
         this._lastRecordingTime = -1;
+        this._lastFramesDuration = [ ];
         this._averageFrameDuration =  this._toUs(1000 / this._desiredFrameRate);
         this._framesCount = 0;
         this._lastFrameTime = 0;
 
         this._isDestroyed = false;
-        
+
         this._direction = this.directions.FORWARD;
 
         this._state = this.states.STOPPED;
@@ -73,7 +76,7 @@ module.exports = (function() {
             }),
             state: this._createGetter({
                 publicName: 'state',
-                privateName: '_state' 
+                privateName: '_state'
             }),
             isStopped: this._createGetter({
                 publicName: 'isStopped',
@@ -134,7 +137,7 @@ module.exports = (function() {
 
             delete this._keyframes;
             delete this._drawer;
-            delete this._frame;
+            delete this._lastFramesDuration;
 
             if(this._requestedFrame) {
                 cancelAnimationFrame(this._requestedFrame);
@@ -167,19 +170,21 @@ module.exports = (function() {
                 }
             }
 
-            if('undefined' !== typeof fromTime) {
-                this._state = this.states.PLAYING;
 
-                this.seek(fromTime);
-            } else if(this._state === this.states.PAUSED) {
+            if(this._state === this.states.PAUSED) {
                 this._lastFrameTime = 0;
                 this._nextFrameDesiredTime = 0;
 
                 this.emit('resume');
-            } else if(this._state !== this.states.PLAYING) {
+            }
+            
+            if(this._state !== this.states.PLAYING) {
                 if(this._isSeeking) {
                     this._finishSeeking();
                 }
+                
+                this._state = this.states.PLAYING;
+                this._requestedFrame = requestAnimationFrame(this._frame);
 
                 var toForward = (this._direction === this.directions.FORWARD);
 
@@ -191,12 +196,11 @@ module.exports = (function() {
                 this._nextFrameDesiredTime = 0;
 
                 this.emit('play');
-            } else {
-                return;
             }
 
-            this._state = this.states.PLAYING;
-            this._requestedFrame = requestAnimationFrame(this._frame);
+            if('undefined' !== typeof fromTime) {
+                this.seek(fromTime);
+            }
         },
         pause: function() {
             if(this._isDestroyed) {
@@ -217,13 +221,13 @@ module.exports = (function() {
             // it seems like sometimes frame is requested but isPlaying flag is not set
             if(this._state !== this.states.STOPPED) {
                 this._state = this.states.STOPPED;
-                
+
                 cancelAnimationFrame(this._requestedFrame);
 
                 this.emit('stop');
             }
         },
-        /* @function seek - Allows to move video to specified time
+        /* @function seek - Allows to move video to specified time; if video is stopped, it make it paused on specified time
          * @param {number} toTime - A positive integer, time in milliseconds, desired recording time
          *
          * @property {object} seeking - map of available modes of seeking
@@ -232,59 +236,57 @@ module.exports = (function() {
          *
          * @property {*} [seekingMode=seeking.OMIT_FRAMES] - current seeking mode
          * @property {number} [seekingSpeed=100] - indicates speed of playing speed in PLAY_FRAMES mode
-         * 
+         *
          */
         seek: function(toTime) {
             if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
 
-            if(this._state !== this.states.STOPPED) {
-                if(this._seekingMode === this.seeking.PLAY_FRAMES) {
-                    // try to emit all frames from current to desired time with high speed
-                    // and continue playing from that point
-                    var recordingEndTime = this._toUs(toTime);
+            var recordingEndTime = this._toUs(toTime);
 
-                    var diff = recordingEndTime - this._lastRecordingTime;
-                    var dir;
-                    if(diff < 0) {
-                        dir = this.directions.BACKWARD;
-                    } else if(diff > 0) {
-                        dir = this.directions.FORWARD;
-                    } else {
-                    // start only if seeking makes sense (diff !== 0)
-                        return;
+            var diff = recordingEndTime - this._lastRecordingTime;
+            var dir;
+            if(diff < 0) {
+                dir = this.directions.BACKWARD;
+            } else if(diff > 0) {
+                dir = this.directions.FORWARD;
+            } else {
+            // start only if seeking makes sense (diff !== 0)
+                return;
+            }
+
+            if(this._state === this.states.STOPPED) {
+                this._state = this.states.PAUSED;
+            }
+
+            if(this._seekingMode === this.seeking.PLAY_FRAMES) {
+                // try to emit all frames from current to desired time with high speed
+                // and continue playing from that point
+                if(!this._isSeeking) {
+                    this._isSeeking = true;
+
+                    // store settings for normal playing
+                    this._previousDirection = this._direction;
+                    this._previousRecordingEndTime = this._recordingEndTime;
+                    this._previousSpeed = this._speed;
+
+                    this._speed = this._seekingSpeed;
+
+                    if(this._state === this.states.PAUSED) {
+                        this._requestedFrame = requestAnimationFrame(this._frame);
                     }
-
-                    if(!this._isSeeking) {
-                        this._isSeeking = true;
-
-                        // store settings for normal playing
-                        this._previousDirection = this._direction;
-                        this._previousRecordingEndTime = this._recordingEndTime;
-                        this._previousSpeed = this._speed;
-
-                        this._speed = this._seekingSpeed;
-
-                        if(this._state === this.states.PAUSED) {
-                            this._requestedFrame = requestAnimationFrame(this._frame);
-                        }
-                    }
-
-                    this._direction = dir;
-                    this._recordingEndTime = recordingEndTime;
-                } else {
-                    // simply jump to desired time
-                    this._lastRecordingTime = this._toUs(toTime);
                 }
+
+                this._direction = dir;
+                this._recordingEndTime = recordingEndTime;
 
                 this.emit('seekingstart');
             } else {
-                // seek or not, that is a question
-                // if seek, do something like this
-                // this._isSeeking = true;
-                // this.play(toTime);
-                // this.pause();
+                // simply jump to desired time
+                this._lastRecordingTime = this._toUs(toTime);
+
+                this.emit('seek', toTime);
             }
         },
         _frame: function(ct) {
@@ -293,7 +295,7 @@ module.exports = (function() {
             }
 
             var currentTime = this._toUs(ct);
-            
+
             if(!this._lastFrameTime) {
                 // the first keyframe is empty
                 this._lastFrameTime = currentTime;
@@ -304,17 +306,15 @@ module.exports = (function() {
             } else {
                 var toForward = (this._direction === this.directions.FORWARD);
 
-                // emit start signal on first "real" keyframe
+                // emit start signal on first "real" keyframe of playing
                 if(!this._playingStartTime) {
                     this.emit('start', this._toMs(this._playingStartTime = currentTime));
                 }
-                
+
                 var lastFrameDuration = currentTime - this._lastFrameTime;
                 this._framesCount++;
 
-                if(lastFrameDuration) {
-                    this._averageFrameDuration += ((lastFrameDuration - this._averageFrameDuration) / this._framesCount);
-                }
+                this._averageFrameDuration = this._getAverageFrameDuration(lastFrameDuration);
 
                 var frameStartTime = this._nextFrameDesiredTime;
                 var frameDuration = Math.max(currentTime - frameStartTime, Math.round(this._averageFrameDuration));
@@ -322,7 +322,7 @@ module.exports = (function() {
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
                 var frameRange = Math.abs(startKeyframeTime - endKeyframeTime);
-                
+
                 // take desired recordingEndTime into account
                 if(toForward) {
                     if(endKeyframeTime > this._recordingEndTime) {
@@ -340,7 +340,7 @@ module.exports = (function() {
                 var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
 
                 this._drawer(keyframes, nextKeyframe, this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1)), this._toMs(currentTime));
-                
+
                 if((lastKeyframe &&
                         (toForward ?
                             this._toUs(lastKeyframe.time) < this._recordingEndTime :
@@ -372,7 +372,7 @@ module.exports = (function() {
 
                     this.emit('end');
                 }
-                
+
                 this._nextFrameDesiredTime = currentTime + frameDuration;
                 this._lastFrameTime = currentTime;
                 this._lastRecordingTime = endKeyframeTime;
@@ -381,7 +381,7 @@ module.exports = (function() {
         _getKeyframesForTimeRange: function(st, et, toForward) {
             var startTime = this._toMs(st);
             var endTime = this._toMs(et);
-            
+
             if(toForward) {
                 return this._keyframes.filter(function(keyframe) {
                     return (keyframe.time >= startTime) && (keyframe.time < endTime);
@@ -391,6 +391,19 @@ module.exports = (function() {
                     return (keyframe.time > endTime) && (keyframe.time <= startTime);
                 }).reverse();
             }
+        },
+        _getAverageFrameDuration: function(lastFrameDuration) {
+            if(lastFrameDuration) {
+                this._lastFramesDuration.push(lastFrameDuration);
+            }
+
+            if(this._lastFramesDuration.length > this._lastFramesForAverage) {
+                this._lastFramesDuration.shift();
+            }
+
+            return (this._lastFramesDuration.reduce(function(prev, current) {
+                return (prev + current);
+            }) / this._lastFramesDuration.length);
         },
         _adaptToSpeed: function(value) {
             return Math.round(value * this._speed, 10);
@@ -403,10 +416,11 @@ module.exports = (function() {
         },
         _finishSeeking: function() {
             this._isSeeking = false;
+            this._playingFromTime = false;
 
             this._recordingEndTime = this._previousRecordingEndTime;
             delete this._previousRecordingEndTime;
-            
+
             this._direction = this._previousDirection;
             delete this._previousDirection;
 
@@ -417,7 +431,7 @@ module.exports = (function() {
         },
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
-            
+
             return {
                 get: function() {
                     return setVal;

@@ -4,7 +4,7 @@ var extend = require('extend');
 var Player = require('../index');
 
 var tileSize = 50;
-var initialSpeed = 10;
+var initialSpeed = 8;
 
 var player;
 
@@ -68,12 +68,8 @@ var ui = (function() {
         var parsed = parseFloat(timeline.value, 10);
         var desiredTime = parsed * keyframes[keyframes.length - 1].time;
 
-        if(!player.isPlaying) {
-            player.play();
-            player.pause();
-        }
-
         player.seek(desiredTime);
+        // player.play(desiredTime);
     }).css({
         width: (tileSize * 10) + 'px',
         display: 'block'
