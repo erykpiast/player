@@ -45,7 +45,7 @@ module.exports = (function() {
         this._maxFrameTime = (1000 / this._desiredFrameRate * 2);
         this._lastRecordingTime = -1;
         this._lastFramesDuration = [ ];
-        this._averageFrameDuration =  this._toUs(1000 / this._desiredFrameRate);
+        this._averageFrameDuration = this._toUs(1000 / this._desiredFrameRate);
         this._framesCount = 0;
         this._lastFrameTime = 0;
 
@@ -105,7 +105,7 @@ module.exports = (function() {
             fps: this._createGetter({
                 publicName: 'fps',
                 get: function() {
-                    return ((1000 * 1000) / this._averageFrameDuration);
+                    return ((1000 * 1000) / (this._isSeeking ? this._previousAverageFrameDuration : this._averageFrameDuration));
                 }
             })
         });
@@ -224,6 +224,8 @@ module.exports = (function() {
 
                 cancelAnimationFrame(this._requestedFrame);
 
+                this._lastRecordingTime = -1;
+
                 this.emit('stop');
             }
         },
@@ -267,11 +269,15 @@ module.exports = (function() {
                     this._isSeeking = true;
 
                     // store settings for normal playing
+                    this._previousSpeed = this._speed;
+                    this._previousAverageFrameDuration = this._averageFrameDuration;
                     this._previousDirection = this._direction;
                     this._previousRecordingEndTime = this._recordingEndTime;
-                    this._previousSpeed = this._speed;
 
                     this._speed = this._seekingSpeed;
+                    // try to scale current average frame duration to new speed
+                    this._averageFrameDuration = (this._averageFrameDuration * (this._seekingSpeed / this._speed));
+                    this._resetAverageFrameDuration();
 
                     if(this._state === this.states.PAUSED) {
                         this._requestedFrame = requestAnimationFrame(this._frame);
@@ -281,7 +287,7 @@ module.exports = (function() {
                 this._direction = dir;
                 this._recordingEndTime = recordingEndTime;
 
-                this.emit('seekingstart');
+                this.emit('seekstart');
             } else {
                 // simply jump to desired time
                 this._lastRecordingTime = this._toUs(toTime);
@@ -308,7 +314,9 @@ module.exports = (function() {
 
                 // emit start signal on first "real" keyframe of playing
                 if(!this._playingStartTime) {
-                    this.emit('start', this._toMs(this._playingStartTime = currentTime));
+                    this._playingStartTime = currentTime;
+
+                    this.emit('start', this._toMs(this._playingStartTime));
                 }
 
                 var lastFrameDuration = currentTime - this._lastFrameTime;
@@ -321,7 +329,6 @@ module.exports = (function() {
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
-                var frameRange = Math.abs(startKeyframeTime - endKeyframeTime);
 
                 // take desired recordingEndTime into account
                 if(toForward) {
@@ -334,12 +341,16 @@ module.exports = (function() {
                     }
                 }
 
+                var frameRange = Math.abs(startKeyframeTime - endKeyframeTime);
                 var keyframes = this._getKeyframesForTimeRange(startKeyframeTime, endKeyframeTime, toForward);
                 var lastKeyframe = keyframes[keyframes.length - 1];
                 var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
                 var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
 
                 this._drawer(keyframes, nextKeyframe, this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1)), this._toMs(currentTime));
+
+                this._nextFrameDesiredTime = currentTime + frameDuration;
+                this._lastFrameTime = currentTime;
 
                 if((lastKeyframe &&
                         (toForward ?
@@ -366,6 +377,11 @@ module.exports = (function() {
                     // if recording was played when seek signal came, continue playing
                         this._requestedFrame = requestAnimationFrame(this._frame);
                     }
+
+                    // start playing from frame after next one
+                    // rendering frames for recording played with very high speed (what usually happens when seeking)
+                    // can take huge amounts of time, but we don't want to take it into account when after seeking we start "normal" playing
+                    this._lastFrameTime = 0;
                 } else {
                 // or just send end signal
                     this._state = this.states.STOPPED;
@@ -373,8 +389,7 @@ module.exports = (function() {
                     this.emit('end');
                 }
 
-                this._nextFrameDesiredTime = currentTime + frameDuration;
-                this._lastFrameTime = currentTime;
+                // it has to be here until we check current value of this._lastRecordingTime above
                 this._lastRecordingTime = endKeyframeTime;
             }
         },
@@ -401,9 +416,24 @@ module.exports = (function() {
                 this._lastFramesDuration.shift();
             }
 
-            return (this._lastFramesDuration.reduce(function(prev, current) {
-                return (prev + current);
-            }) / this._lastFramesDuration.length);
+            if(this._lastFramesDuration.length) {
+                return (this._lastFramesDuration.reduce(function(prev, current) {
+                    return (prev + current);
+                }) / this._lastFramesDuration.length);
+            } else {
+                return this._averageFrameDuration;
+            }
+        },
+        _resetAverageFrameDuration: function(lastFrameDuration) {
+            while(this._lastFramesDuration.length) {
+                this._lastFramesDuration.pop();
+            }
+
+            if(lastFrameDuration) {
+                this._lastFramesDuration.push(lastFrameDuration);
+            }
+
+            return lastFrameDuration;
         },
         _adaptToSpeed: function(value) {
             return Math.round(value * this._speed, 10);
@@ -416,7 +446,9 @@ module.exports = (function() {
         },
         _finishSeeking: function() {
             this._isSeeking = false;
-            this._playingFromTime = false;
+
+            this._averageFrameDuration = this._resetAverageFrameDuration(this._previousAverageFrameDuration);
+            delete this._previousAverageFrameDuration;
 
             this._recordingEndTime = this._previousRecordingEndTime;
             delete this._previousRecordingEndTime;
@@ -427,7 +459,7 @@ module.exports = (function() {
             this._speed = this._previousSpeed;
             delete this._previousSpeed;
 
-            this.emit('seekingend');
+            this.emit('seekend');
         },
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
@@ -437,6 +469,10 @@ module.exports = (function() {
                     return setVal;
                 },
                 set: function(value) {
+                    if(this._isSeeking) {
+                        throw new Error('you can not set new speed during seeking, sorry');
+                    }
+
                     var parsed = parseFloat(value, 10);
 
                     if(!isNaN(parsed) && isFinite(parsed)) {

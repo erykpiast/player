@@ -207,9 +207,9 @@ player.on('end', function() {
     console.debug('playing finished');
 });
 player.on('play', function() {
-    while(stage.firstChild) {
-        stage.removeChild(stage.firstChild);
-    }
+    // while(stage.firstChild) {
+    //     stage.removeChild(stage.firstChild);
+    // }
 });
 
 $(function() {
