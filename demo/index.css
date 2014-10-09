@@ -1,0 +1,26 @@
+body {
+    float: left;
+    margin: 0;
+    padding: 0;
+}
+
+.stage {
+    box-shadow: 0 0 0 1px #000;
+    overflow: hidden;
+    position: relative;
+}
+    .stage__tile {
+        float: left;
+    }
+
+.ui .ui-container--speed,
+.ui .ui-container--fps {
+    display: inline-block;
+}
+
+.ui .ui-container--timeline {
+    width: 100%;
+}
+    .ui .ui-container--timeline > input[type=range] {
+        width: 100%;
+    }

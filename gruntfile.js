@@ -6,6 +6,7 @@ module.exports = function (grunt) {
         'jshint',
         'clean:demo',
         'browserify:demo',
+        'autoprefixer:demo',
         'notify:build',
         'http-server:demo',
         'watch:demo',
@@ -25,12 +26,18 @@ module.exports = function (grunt) {
                 },
                 dir: 'demo',
                 files: [
-                    'demo/index.js',
-                    'demo/index.html'
+                    'demo/**/*',
+                    '!demo/index.html',
+                    '!demo/demo.bundle.js',
+                    '!demo/demo.bundle.css'
                 ],
                 js: {
                     index: 'demo/index.js',
                     bundle: 'demo/demo.bundle.js'
+                },
+                css: {
+                    index: 'demo/index.css',
+                    bundle: 'demo/demo.bundle.css'
                 }
             },
             src: {
@@ -50,7 +57,7 @@ module.exports = function (grunt) {
             }
         },
         clean: {
-            demo: [ '<%= config.demo.js.bundle %>' ],
+            demo: [ '<%= config.demo.js.bundle %>', '<%= config.demo.css.bundle %>'  ],
             test: [ '<%= config.spec.bundle %>' ]
         },
         test: {
@@ -78,7 +85,8 @@ module.exports = function (grunt) {
             options: {
                 browserifyOptions: {
                     debug: true
-                }
+                },
+                transform: [ 'brfs' ]
             },
             demo: {
                 files: [{
@@ -108,6 +116,21 @@ module.exports = function (grunt) {
                 }
             }
         },
+        autoprefixer: {
+            options: {
+                browsers: [ 'last 2 version' ]
+            },
+            demo: {
+                options: {
+                    cascade: true,
+                    map: {
+                        inline: true
+                    }
+                },
+                src: '<%= config.demo.css.index %>',
+                dest: '<%= config.demo.css.bundle %>'
+            }
+        },
         watch: {
             demo: {
                 options: {
@@ -121,6 +144,7 @@ module.exports = function (grunt) {
                     'jshint',
                     'clean:demo',
                     'browserify:demo',
+                    'autoprefixer:demo',
                     'notify:build'
                 ]
             },
