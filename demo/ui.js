@@ -7,12 +7,13 @@ module.exports = (function() {
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
 
-    function UI(container, player) {
+    function UI(container, partials, player) {
         this._player = player;
 
-        this._view = new Ractive({
+        this.view = new Ractive({
             el: container,
             template: template.toString(),
+            partials: partials,
             data: {
                 progress: 0,
                 currentSpeed: player.speed,
@@ -21,7 +22,7 @@ module.exports = (function() {
             }
         });
 
-        this._view.on({
+        this.view.on({
             playPause: function playPauseHandler() {
                 if(player.isPlaying) {
                     player.pause();
@@ -42,7 +43,7 @@ module.exports = (function() {
         });
 
         var updatePlayingStatus = function() {
-            this._view.set('playing', player.isPlaying);
+            this.view.set('playing', player.isPlaying);
         }.bind(this);
 
         this._player
@@ -51,10 +52,18 @@ module.exports = (function() {
             .on('stop', updatePlayingStatus)
             .on('end', updatePlayingStatus)
             .on('progress', function(currentRecordingTime) {
-                this._view.set('progress', currentRecordingTime / player.lastFrameTime);
-                this._view.set('fps', player.fps);
+                this.view.set('progress', currentRecordingTime / player.lastFrameTime);
+                this.view.set('fps', player.fps);
             }.bind(this));
     }
+
+
+    UI.prototype = {
+        destroy: function() {
+            this.view.teardown();
+            this.view.detach();
+        }
+    };
 
 
     return UI;

@@ -1,26 +1,52 @@
 body {
-    float: left;
     margin: 0;
     padding: 0;
 }
 
-.stage {
-    box-shadow: 0 0 0 1px #000;
-    overflow: hidden;
-    position: relative;
+.experiment {
+    float: left;
 }
-    .stage__tile {
+    .experiment__stage {
+        box-shadow: 0 0 0 1px #000;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .experiment__ui .ui-container--speed,
+    .experiment__ui .ui-container--fps {
+        display: inline-block;
+    }
+
+    .experiment__ui .ui-container--timeline {
+        width: 100%;
+    }
+        .experiment__ui .ui-container--timeline > input[type=range] {
+            width: 100%;
+        }
+
+.experiment--progressive-basic {
+
+}
+    .experiment--progressive-basic .experiment__stage__tile {
         float: left;
     }
 
-.ui .ui-container--speed,
-.ui .ui-container--fps {
-    display: inline-block;
-}
 
-.ui .ui-container--timeline {
-    width: 100%;
+.experiment--progressive-tweens {
+
 }
-    .ui .ui-container--timeline > input[type=range] {
-        width: 100%;
+    .experiment--progressive-tweens .experiment__stage__tile {
+        float: left;
+    }
+
+
+.experiment--streaming-tweens__ui {
+    
+}
+    .experiment--streaming-tweens .experiment__stage__ball {
+        background-color: #F00;
+        box-shadow: 0 0 15px #000 inset;
+        border-radius: 50%;
+        position: absolute;
+        transform: translateY(-50%) translateX(-50%);
     }

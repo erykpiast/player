@@ -29,4 +29,6 @@
             on-input="seek"
             value="{{ progress }}"/>
     </div>
+
+    {{ >experimentSpecific }}
 </div>
