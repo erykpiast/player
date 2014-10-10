@@ -10,7 +10,7 @@ var Player = proxyquire('../index', {
 });
 
 
-describe('Player class test', function() {
+xdescribe('Player class test', function() {
 
     it('Should be a function and should be instantiated', function() {
         expect(typeof Player).toBe('function');
@@ -33,7 +33,7 @@ describe('Player class test', function() {
 });
 
 
-describe('Player instance test', function() {
+xdescribe('Player instance test', function() {
     var player;
 
     beforeEach(function() {
@@ -69,7 +69,7 @@ describe('Player instance test', function() {
 });
 
 
-describe('Player destroying test', function() {
+xdescribe('Player destroying test', function() {
     var player;
     var drawingFn;
 
@@ -141,7 +141,7 @@ describe('Player destroying test', function() {
 });
 
 
-describe('Player.prototype.play test', function() {
+xdescribe('Player.prototype.play test', function() {
     var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
@@ -286,7 +286,7 @@ describe('Player.prototype.play test', function() {
 });
 
 
-describe('Player.prototype.play with various speeds test', function() {
+xdescribe('Player.prototype.play with various speeds test', function() {
     var speed = 1;
     var player;
     var drawingFn;
@@ -415,7 +415,7 @@ describe('Player.prototype.play with various speeds test', function() {
 });
 
 
-describe('Player.prototype.pause test', function() {
+xdescribe('Player.prototype.pause test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -505,7 +505,7 @@ describe('Player.prototype.pause test', function() {
 });
 
 
-describe('Player.prototype.stop test', function() {
+xdescribe('Player.prototype.stop test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -590,7 +590,7 @@ describe('Player.prototype.stop test', function() {
 });
 
 
-describe('Player synchronization test', function() {
+xdescribe('Player synchronization test', function() {
     var framesCount = 200;
     var player;
     var drawingFn;
@@ -942,7 +942,7 @@ describe('Player synchronization test BACKWARD', function() {
             });
         }));
 
-    it('Should play exactly two keyframes per frame if time difference between ' +
+    xit('Should play exactly two keyframes per frame if time difference between ' +
         'keyframes is four as less than difference between frames',
         _test(10, 40, function(keyframesDiff, framesDiff) {
             expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)));
@@ -954,7 +954,7 @@ describe('Player synchronization test BACKWARD', function() {
             });
         }));
 
-    it('Should play exactly one keyframe per each two frames if time difference ' +
+    xit('Should play exactly one keyframe per each two frames if time difference ' +
         'between keyframes is twice as great than difference between frames',
         _test(20, 10, function(keyframesDiff, framesDiff, exampleFrames) {
         // -1 is because in call preceding the 400 last keyframe is emitted
@@ -973,7 +973,7 @@ describe('Player synchronization test BACKWARD', function() {
         });
     }));
 
-    it('Should play exactly one keyframe per each four frames if time difference ' +
+    xit('Should play exactly one keyframe per each four frames if time difference ' +
         'between keyframes is four as great than difference between frames',
         _test(40, 10, function(keyframesDiff, framesDiff, exampleFrames) {
         // -1 is because in call preceding the 400 last keyframe is emitted
@@ -992,7 +992,7 @@ describe('Player synchronization test BACKWARD', function() {
         });
     }));
 
-    it('Should emit keyframes for estimated frame time starting from frame time', function() {
+    xit('Should emit keyframes for estimated frame time starting from frame time', function() {
         var frameTime = 20;
         exampleFrames = [{
             time: 1
@@ -1030,7 +1030,7 @@ describe('Player synchronization test BACKWARD', function() {
         expect(drawingFn.calls.argsFor(1)[0][2]).toBe(exampleFrames[exampleFrames.length - 5]);
     });
 
-    it('Should emit all keyframes for time that passed between current and last frame even if it is bigger than estimated time',
+    xit('Should emit all keyframes for time that passed between current and last frame even if it is bigger than estimated time',
     function() {
         var frameTime = 20;
         exampleFrames = _createFrames(100, frameTime);
@@ -1072,7 +1072,7 @@ describe('Player synchronization test BACKWARD', function() {
 });
 
 
-describe('Player.prototype.seek test', function() {
+xdescribe('Player.prototype.seek test', function() {
     var player;
     var drawingFn;
     var drawingFnCalls;
@@ -1353,7 +1353,7 @@ describe('Player.prototype.seek test', function() {
 });
 
 
-describe('Player integration test', function() {
+xdescribe('Player integration test', function() {
     var frameTime = 20;
     var player;
     var drawingFn;

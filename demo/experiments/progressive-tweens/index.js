@@ -23,10 +23,15 @@ module.exports = (function() {
         this._playerOptions = {
             seekingMode: Player.seeking.PLAY_FRAMES,
             seekingSpeed: 1024,
-            speed: 1
+            speed: 8
         };
 
-        this._experimentSpecificUi = template.toString();
+        this._uiOptions = {
+            partial: template.toString(),
+            direction: Player.directions.FORWARD
+        };
+
+        this._tweens = { };
     }
 
     util.inherits(ProgressiveTweens, Experiment);
@@ -43,6 +48,20 @@ module.exports = (function() {
             this._ui.view.observe('ease', function(value) {
                 this.conf.ease = value;
             }.bind(this));
+
+            this._ui.view.set('backward', this._uiOptions.direction === Player.directions.BACKWARD);
+            this._ui.view.observe('backward', function(value) {
+                if(value) {
+                    this._uiOptions.direction = Player.directions.BACKWARD;
+                } else {
+                    this._uiOptions.direction = Player.directions.FORWARD;
+                }
+
+                if(this._player.isPlaying && (this._player.direction !== this._uiOptions.direction)) {
+                    this._player.pause();
+                    this._player.play(undefined, this._uiOptions.direction);
+                }
+            }.bind(this));
         },
         // unload: function() {
         //     Experiment.prototype.unload.call(this);
@@ -55,53 +74,105 @@ module.exports = (function() {
             var keyframes = [ ];
 
             for (var i = 0; i < 100; i++) {
-                var keyframe = keyframes[i] = {
+                var createKeyframe = {
                     index: i,
-                    time: keyframes[i - 1] ? keyframes[i - 1].time + 1000 : 0
+                    time: i * 1000,
+                    type: 'create',
+                    color: _pad(Math.round(255 / 100 * i).toString(16), 2) + '00' + _pad(Math.round(255 - 255 / 100 * i).toString(16), 2)
                 };
-                keyframe.type = 'create';
-                keyframe.color = _pad(Math.round(255 / 100 * i).toString(16), 2) + '00' + _pad(Math.round(255 - 255 / 100 * i).toString(16), 2);
+
+                keyframes.push(createKeyframe);
+
+                var changeKeyframe = {
+                    index: i,
+                    time: createKeyframe.time + 1000,
+                    type: 'change',
+                    width: this.conf.tileSize
+                };
+
+                keyframes.push(changeKeyframe);
             }
 
             return (this._keyframes = keyframes);
         },
         _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
-            if(this._player.direction === this._player.directions.BACKWARD) {
+            var toForward = this._player.direction === this._player.directions.FORWARD;
+
+            if(!toForward) {
                 keyframes = keyframes.map(this._reverseKeyframe, this);
 
-                nextKeyframe = this._reverseKeyframe(nextKeyframe);
+                if(nextKeyframe) {
+                    nextKeyframe = this._reverseKeyframe(nextKeyframe);
+                }
             }
 
             keyframes.forEach(this._keyframeHandler, this);
 
+            if(this.conf.ease) {
+                var lastTileKeyframe;
+                var changeKeyframe;
 
-            var diff = Math.abs(currentRecordingTime - nextKeyframe.time);
-            if(diff <= 1000) {
-                var tile = this._stage.querySelector('[data-index="'+ nextKeyframe.index +'"]');
+                if(toForward) {
+                    var tileKeyframes = keyframes.filter(function(keyframe) {
+                        return (keyframe.type !== 'change');
+                    });
+                    lastTileKeyframe =  tileKeyframes[tileKeyframes.length - 1];
+                    if(lastTileKeyframe) {
+                        changeKeyframe = this._keyframes.filter(function(keyframe) {
+                            return (
+                                (lastTileKeyframe.index === keyframe.index) &&
+                                (keyframe.type === 'change') &&
+                                (keyframe.time > lastTileKeyframe.time) &&
+                                (keyframes.indexOf(keyframe) === -1)
+                            );
+                        })[0];
+                    }
+                } else {
+                    changeKeyframe = this._keyframes.filter(function(keyframe) {
+                        return (
+                            (keyframe.type === 'change') &&
+                            (keyframe.time < currentRecordingTime)
+                        );
+                    }).reverse()[0];
 
-                if(tile) {
-                    if(this.conf.ease) {
-                        if(this._tween) {
-                            // this._tween.stop();
+                    if(changeKeyframe) {
+                        lastTileKeyframe = this._keyframes.filter(function(keyframe) {
+                            return (
+                                (changeKeyframe.index === keyframe.index) &&
+                                (keyframe.type !== 'change') &&
+                                (keyframe.time < changeKeyframe.time)
+                            );
+                        })[0];
+                    }
+                }
+
+                if(lastTileKeyframe && changeKeyframe) {
+                    var tile = this._stage.querySelector('[data-index="'+ lastTileKeyframe.index +'"]');
+
+                    if(tile) {
+                        if(this._tweens[changeKeyframe.index]) {
+                            this._tweens[changeKeyframe.index].stop();
+                            delete this._tweens[changeKeyframe.index];
                         }
 
                         var self = this;
-                        this._tween = new TweenJs.Tween({
-                            width: this._reverseKeyframe(nextKeyframe).width
+                        this._tweens[changeKeyframe.index] = new TweenJs.Tween({
+                            width: this._reverseKeyframe(changeKeyframe).width
                         })
                         .to({
-                            width: nextKeyframe.width
-                        }, diff)
+                            width: changeKeyframe.width
+                        }, Math.abs(changeKeyframe.time - lastTileKeyframe.time))
                         // .easing(TweenJs.Easing.Elastic.InOut)
                         .onUpdate(function() {
                             self._updateTile(tile, this.width);
                         })
-                        .start(nextKeyframe.time);
+                        .onStop(function() {
+                            self._updateTile(tile, changeKeyframe.width);  
+                        })
+                        .start((toForward ? lastTileKeyframe : changeKeyframe).time);
                     } else {
-                        this._updateTile(tile, nextKeyframe.width);
+                        console.warn('no tile with index ' + lastTileKeyframe.index + ' on a stage');
                     }
-                } else {
-                    console.warn('no tile with index ' + nextKeyframe.index + ' on a stage');
                 }
             }
 
@@ -120,6 +191,15 @@ module.exports = (function() {
 
                     if(tile) {
                         this._stage.removeChild(tile);
+                    } else {
+                        console.warn('no tile with index ' + keyframe.index + ' on a stage');
+                    }
+                break;
+                case 'change':
+                    tile = this._stage.querySelector('[data-index="'+ keyframe.index +'"]');
+
+                    if(tile) {
+                        this._updateTile(tile, keyframe.width);
                     } else {
                         console.warn('no tile with index ' + keyframe.index + ' on a stage');
                     }

@@ -5,7 +5,6 @@ module.exports = (function() {
     var extend = require('extend');
     var EventEmitter = require('events').EventEmitter;
     var util = require('util');
-    var binarySearch = require('binary-search');
 
 
     function Player(keyframes, drawer, options) {
@@ -197,7 +196,10 @@ module.exports = (function() {
                 }
 
                 this._state = this.states.PLAYING;
-                this._requestedFrame = requestAnimationFrame(this._frame);
+
+                if(!this._requestedFrame) {
+                    this._requestedFrame = requestAnimationFrame(this._frame);
+                }
 
                 var toForward = (this._direction === this.directions.FORWARD);
 
@@ -236,6 +238,7 @@ module.exports = (function() {
                 this._state = this.states.STOPPED;
 
                 cancelAnimationFrame(this._requestedFrame);
+                this._requestedFrame = null;
 
                 this._lastRecordingTime = -1;
 
@@ -309,6 +312,7 @@ module.exports = (function() {
             this.emit('seekstart');
         },
         _frame: function(ct) {
+            this._requestedFrame = null;
             if((this._state === this.states.PAUSED) && !this._isSeeking) {
                 return;
             }
@@ -435,14 +439,14 @@ module.exports = (function() {
             
             if(toForward) {
                 var low = 0;
-                while(this._keyframes[low].time <= time) {
+                while(this._keyframes[low] && (this._keyframes[low].time <= time)) {
                     low++;
                 }
                 
                 return this._keyframes[low];
             } else {
                 var high = this._keyframes.length - 1;
-                while(this._keyframes[high].time >= time) {
+                while(this._keyframes[high] && (this._keyframes[high].time >= time)) {
                     high--;
                 }
                 

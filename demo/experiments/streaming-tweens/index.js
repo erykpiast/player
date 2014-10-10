@@ -7,6 +7,7 @@ module.exports = (function() {
     var TweenJs = require('tween.js');
 
     var Experiment = require('../../experiment');
+    var Player = require('../../../index');
 
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
@@ -32,7 +33,9 @@ module.exports = (function() {
             speed: 1/2
         };
 
-        this._experimentSpecificUi = template.toString();
+        this._uiOptions = {
+            partial: template.toString()
+        };
     }
 
     util.inherits(StreamingTweens, Experiment);
@@ -55,6 +58,20 @@ module.exports = (function() {
             this._ui.view.set('ease', this.conf.ease);
             this._ui.view.observe('ease', function(value) {
                 this.conf.ease = value;
+            }.bind(this));
+
+            this._ui.view.set('backward', this._uiOptions.direction === Player.directions.BACKWARD);
+            this._ui.view.observe('backward', function(value) {
+                if(value) {
+                    this._uiOptions.direction = Player.directions.BACKWARD;
+                } else {
+                    this._uiOptions.direction = Player.directions.FORWARD;
+                }
+
+                if(this._player.isPlaying && (this._player.direction !== this._uiOptions.direction)) {
+                    this._player.pause();
+                    this._player.play(undefined, this._uiOptions.direction);
+                }
             }.bind(this));
         },
         // unload: function() {

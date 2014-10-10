@@ -2,18 +2,25 @@ module.exports = (function() {
 
     var Ractive = require('ractive');
     var fs = require('fs');
+    var extend = require('extend');
 
 
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
 
-    function UI(container, partials, player) {
+    function UI(container, player, options) {
         this._player = player;
+
+        options = extend({
+            direction: player.directions.FORWARD
+        }, options);
 
         this.view = new Ractive({
             el: container,
             template: template.toString(),
-            partials: partials,
+            partials: {
+                experimentSpecific: options.partial
+            },
             data: {
                 progress: 0,
                 currentSpeed: player.speed,
@@ -27,7 +34,7 @@ module.exports = (function() {
                 if(player.isPlaying) {
                     player.pause();
                 } else {
-                    player.play();
+                    player.play(undefined, options.direction);
                 }
 
                 this.set('playing', player.isPlaying);

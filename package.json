@@ -41,6 +41,7 @@
     "karma": "~0.12",
     "karma-chrome-launcher": "~0.1",
     "karma-jasmine": "~0.2",
+    "karma-jasmine-html-reporter": "^0.1.5",
     "karma-phantomjs-launcher": "~0.1",
     "karma-slimerjs-launcher": "^0.1.2",
     "load-grunt-tasks": "~0.6",

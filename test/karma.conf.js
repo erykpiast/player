@@ -6,7 +6,7 @@ module.exports = function (config) {
 
         files: [ /* definition in gruntfile */ ],
 
-        reporters: [ 'progress' ],
+        reporters: [ 'progress', 'html' ],
         colors: true,
         logLevel: config.LOG_INFO,
 

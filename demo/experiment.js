@@ -14,7 +14,7 @@ module.exports = (function() {
         this._uiContainer.className = 'experiment__ui';
 
         this._playerOptions = { };
-        this._experimentSpecificUi = '';
+        this._uiOptions = { };
     }
 
 
@@ -25,9 +25,7 @@ module.exports = (function() {
 
             this._player = new Player(this._createKeyframes(), this._frameHandler.bind(this), this._playerOptions);
 
-            this._ui = new UI(this._uiContainer, {
-                experimentSpecific: this._experimentSpecificUi
-            }, this._player);
+            this._ui = new UI(this._uiContainer, this._player, this._uiOptions);
         },
         unload: function() {
             while(this._stage.firstChild) {

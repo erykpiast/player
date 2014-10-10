@@ -6,4 +6,11 @@
             checked="{{ ease }}" />
         <label for="ease">Ease</label>
     </div>
+    <div class="ui-container ui-container--backward">
+        <input
+            id="backward"
+            type="checkbox"
+            checked="{{ backward }}" />
+        <label for="backward">Backward</label>
+    </div>
 </div>
