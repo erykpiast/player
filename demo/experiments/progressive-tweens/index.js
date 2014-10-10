@@ -47,13 +47,6 @@ module.exports = (function() {
         // unload: function() {
         //     Experiment.prototype.unload.call(this);
         // },
-        _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
-            keyframes.forEach(function(current) {
-                this._keyframeHandler(current);
-            }, this);
-
-            TweenJs.update(currentRecordingTime);
-        },
         _createKeyframes: function() {
             function _pad(number, digits) {
                 return new Array(Math.max(digits - String(number).length + 1, 0)).join(0) + number;
@@ -61,31 +54,60 @@ module.exports = (function() {
 
             var keyframes = [ ];
 
-            for (var i = 0; i < 200; i++) {
-                var dividedI = Math.floor(i / 2);
-
+            for (var i = 0; i < 100; i++) {
                 var keyframe = keyframes[i] = {
-                    index: dividedI,
-                    time: dividedI * 1000
+                    index: i,
+                    time: keyframes[i - 1] ? keyframes[i - 1].time + 1000 : 0
                 };
-
-                if(i % 2) {
-                    keyframe.type = 'change';
-                    keyframe.width = this.conf.tileSize;
-                    keyframe.duration = 1000;
-                } else {
-                    keyframe.type = 'create';
-                    keyframe.color = _pad(Math.round(255 / 100 * dividedI).toString(16), 2) + '00' + _pad(Math.round(255 - 255 / 100 * dividedI).toString(16), 2);
-                }
+                keyframe.type = 'create';
+                keyframe.color = _pad(Math.round(255 / 100 * i).toString(16), 2) + '00' + _pad(Math.round(255 - 255 / 100 * i).toString(16), 2);
             }
 
             return (this._keyframes = keyframes);
         },
-        _keyframeHandler: function(keyframe) {
+        _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
             if(this._player.direction === this._player.directions.BACKWARD) {
-                keyframe = this._reverseKeyframe(keyframe);
+                keyframes = keyframes.map(this._reverseKeyframe, this);
+
+                nextKeyframe = this._reverseKeyframe(nextKeyframe);
             }
 
+            keyframes.forEach(this._keyframeHandler, this);
+
+
+            var diff = Math.abs(currentRecordingTime - nextKeyframe.time);
+            if(diff <= 1000) {
+                var tile = this._stage.querySelector('[data-index="'+ nextKeyframe.index +'"]');
+
+                if(tile) {
+                    if(this.conf.ease) {
+                        if(this._tween) {
+                            // this._tween.stop();
+                        }
+
+                        var self = this;
+                        this._tween = new TweenJs.Tween({
+                            width: this._reverseKeyframe(nextKeyframe).width
+                        })
+                        .to({
+                            width: nextKeyframe.width
+                        }, diff)
+                        // .easing(TweenJs.Easing.Elastic.InOut)
+                        .onUpdate(function() {
+                            self._updateTile(tile, this.width);
+                        })
+                        .start(nextKeyframe.time);
+                    } else {
+                        this._updateTile(tile, nextKeyframe.width);
+                    }
+                } else {
+                    console.warn('no tile with index ' + nextKeyframe.index + ' on a stage');
+                }
+            }
+
+            TweenJs.update(currentRecordingTime);
+        },
+        _keyframeHandler: function(keyframe) {
             var tile;
             switch(keyframe.type) {
                 case 'create':
@@ -98,34 +120,6 @@ module.exports = (function() {
 
                     if(tile) {
                         this._stage.removeChild(tile);
-                    } else {
-                        console.warn('no tile with index ' + keyframe.index + ' on a stage');
-                    }
-                break;
-                case 'change':
-                    tile = this._stage.querySelector('[data-index="'+ keyframe.index +'"]');
-
-                    if(tile) {
-                        if(this.conf.ease) {
-                            if(this._tween) {
-                                // this._tween.stop();
-                            }
-
-                            var self = this;
-                            this._tween = new TweenJs.Tween({
-                                width: this._reverseKeyframe(keyframe).width
-                            })
-                            .to({
-                                width: keyframe.width
-                            }, keyframe.duration)
-                            // .easing(TweenJs.Easing.Elastic.InOut)
-                            .onUpdate(function() {
-                                self._updateTile(tile, this.width);
-                            })
-                            .start(keyframe.time);
-                        } else {
-                            this._updateTile(tile, keyframe.width);
-                        }
                     } else {
                         console.warn('no tile with index ' + keyframe.index + ' on a stage');
                     }

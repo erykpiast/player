@@ -5,6 +5,7 @@ module.exports = (function() {
     var extend = require('extend');
     var EventEmitter = require('events').EventEmitter;
     var util = require('util');
+    var binarySearch = require('binary-search');
 
 
     function Player(keyframes, drawer, options) {
@@ -189,12 +190,12 @@ module.exports = (function() {
 
                 this.emit('resume');
             }
-            
+
             if(this._state !== this.states.PLAYING) {
                 if(this._isSeeking) {
                     this._finishSeeking();
                 }
-                
+
                 this._state = this.states.PLAYING;
                 this._requestedFrame = requestAnimationFrame(this._frame);
 
@@ -358,19 +359,16 @@ module.exports = (function() {
                     }
                 }
 
-                // var frameRange = Math.abs(startKeyframeTime - endKeyframeTime);
                 var keyframes = this._getKeyframesForTimeRange(startKeyframeTime, endKeyframeTime, toForward);
                 var lastKeyframe = keyframes[keyframes.length - 1];
-                var lastIndex = this._keyframes.indexOf(keyframes[keyframes.length - 1]);
-                var nextKeyframe = this._keyframes[lastIndex + (toForward ? 1 : -1)];
-                // this._currentRecordingTime = this._toMs(startKeyframeTime + (frameRange / 2) * (toForward ? 1 : -1));
+                var nextKeyframe = this._getNextKeyframe(endKeyframeTime, toForward);
                 this._currentRecordingTime = this._toMs(endKeyframeTime);
 
                 this._drawer(keyframes, nextKeyframe, this._currentRecordingTime, this._toMs(currentTime));
 
                 this._nextFrameDesiredTime = currentTime + frameDuration;
                 this._lastFrameTime = currentTime;
-                
+
                 if(!this._isSeeking) {
                     this.emit('progress', this._currentRecordingTime);
                 }
@@ -430,6 +428,25 @@ module.exports = (function() {
                 return this._keyframes.filter(function(keyframe) {
                     return (keyframe.time > endTime) && (keyframe.time <= startTime);
                 }).reverse();
+            }
+        },
+        _getNextKeyframe: function(t, toForward) {
+            var time = this._toMs(t);
+            
+            if(toForward) {
+                var low = 0;
+                while(this._keyframes[low].time <= time) {
+                    low++;
+                }
+                
+                return this._keyframes[low];
+            } else {
+                var high = this._keyframes.length - 1;
+                while(this._keyframes[high].time >= time) {
+                    high--;
+                }
+                
+                return this._keyframes[high];
             }
         },
         _getAverageFrameDuration: function(lastFrameDuration) {

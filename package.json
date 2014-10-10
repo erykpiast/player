@@ -53,6 +53,7 @@
     "tween.js": "^0.14.0"
   },
   "dependencies": {
+    "binary-search": "^1.2.0",
     "extend": "^1.3.0",
     "performance-now": "^0.2.0",
     "request-animation-frame": "^0.1.1"
