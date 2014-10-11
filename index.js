@@ -213,7 +213,7 @@ module.exports = (function() {
                 this.emit('play');
             }
 
-            if('undefined' !== typeof fromTime) {
+            if(('undefined' !== typeof fromTime && (fromTime !== null)) && !((this._lastRecordingTime === -1) && (fromTime === 0))) {
                 this.seek(fromTime);
             }
         },
@@ -330,7 +330,7 @@ module.exports = (function() {
                 var toForward = (this._direction === this.directions.FORWARD);
 
                 // emit start signal on first "real" keyframe of playing
-                if(!this._playingStartTime) {
+                if(!this._playingStartTime && !this._isSeeking) {
                     this._playingStartTime = currentTime;
 
                     this.emit('start', this._toMs(this._playingStartTime));
