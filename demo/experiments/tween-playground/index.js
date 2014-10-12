@@ -12,7 +12,7 @@ module.exports = (function() {
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
 
-    function StreamingTweens() {
+    function TweenPlayground() {
         Experiment.apply(this, arguments);
 
         $(this._stage).css({
@@ -34,13 +34,14 @@ module.exports = (function() {
         };
 
         this._uiOptions = {
-            partial: template.toString()
+            partial: template.toString()/*,
+            direction: Player.directions.BACKWARD*/
         };
     }
 
-    util.inherits(StreamingTweens, Experiment);
+    util.inherits(TweenPlayground, Experiment);
 
-    extend(StreamingTweens.prototype, {
+    extend(TweenPlayground.prototype, {
         conf: {
             ease: true,
             ballSize: 50
@@ -73,6 +74,8 @@ module.exports = (function() {
                     this._player.play(undefined, this._uiOptions.direction);
                 }
             }.bind(this));
+
+            // this._player.seek(this._keyframes[this._keyframes.length - 1].time);
         },
         // unload: function() {
         //     Experiment.prototype.unload.call(this);
@@ -83,65 +86,72 @@ module.exports = (function() {
             // }, this);
     
             if(keyframes[keyframes.length - 1]) {
-                this._keyframeHandler(keyframes[keyframes.length - 1], nextKeyframe, currentRecordingTime);
+                this._keyframeHandler(
+                    keyframes[keyframes.length - 1],
+                    nextKeyframe,
+                    this._player.direction === this._player.directions.FORWARD
+                );
             }
 
             TweenJs.update(currentRecordingTime);
         },
         _createKeyframes: function() {
-            function _trajectory(x) {
-                return Math.sin(x);
-            }
-
+            var framesCount = 10;
             var keyframes = [ ];
 
-            for (var i = 0; i <= 100; i++) {
+            for (var i = 0; i <= framesCount; i++) {
                 var keyframe = keyframes[i] = {
                     index: i,
-                    time: keyframes[i - 1] ? keyframes[i - 1].time + 100 : 0
+                    time: keyframes[i - 1] ? keyframes[i - 1].time + (10000 / framesCount) : 0
                 };
-                keyframe.x = (i / 100);
-                keyframe.y = parseFloat(_trajectory(2 * Math.PI * (i / 100)).toFixed(3), 10);
+                keyframe.x = (i / framesCount);
             }
 
             return (this._keyframes = keyframes);
         },
-        _keyframeHandler: function(keyframe, nextKeyframe, currentRecordingTime) {
+        _keyframeHandler: function(keyframe, nextKeyframe, toForward) {
             if(this.conf.ease) {
                 if(this._tween) {
                     this._tween.stop();
                 }
 
-                if(!nextKeyframe) {
-                    nextKeyframe = keyframe;
-                }
+                if(nextKeyframe) {
+                    var from = (toForward ? keyframe : nextKeyframe);
+                    var to = (toForward ? nextKeyframe : keyframe);
 
-                var self = this;
-                this._tween = new TweenJs.Tween({
-                    x: keyframe.x,
-                    y: keyframe.y
-                })
-                .to({
-                    x: nextKeyframe.x,
-                    y: nextKeyframe.y
-                }, Math.max(Math.abs(nextKeyframe.time - keyframe.time), 0.0001))
-                // .easing(TweenJs.Easing.Elastic.InOut)
-                .onUpdate(function() {
-                    self._updateBall(this.x, this.y);
-                })
-                .start(Math.min(keyframe.time, nextKeyframe.time));
+                    console.group('info');
+                    console.log('startTime', keyframe.time);
+                    console.log('duration', to.time - from.time);
+                    console.log('from', from.x);
+                    console.log('to', to.x);
+                    console.groupEnd();
+
+                    var self = this;
+                    this._tween = new TweenJs.Tween({
+                        x: from.x
+                    })
+                    .to({
+                        x: to.x
+                    }, to.time - from.time)
+                    // .easing(TweenJs.Easing.Elastic.InOut)
+                    .onUpdate(function() {
+                        self._updateBall(this.x);
+                    })
+                    .start(keyframe.time);
+                } else {
+                    this._updateBall(keyframe.x);    
+                }
             } else {
-                this._updateBall(keyframe.x, keyframe.y);
+                this._updateBall(keyframe.x);
             }
         },
         // private
-        _updateBall: function(x, y) {
+        _updateBall: function(x) {
             this._ball.style.left = (x * 100) + '%';
-            this._ball.style.top = (50 + (y * 50)) + '%';
         }
     });
 
 
-    return StreamingTweens;
+    return TweenPlayground;
 
 })();

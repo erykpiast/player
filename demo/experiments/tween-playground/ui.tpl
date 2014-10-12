@@ -1,4 +1,4 @@
-<div class="experiment--streaming-tweens__ui">
+<div class="experiment--tween-playground__ui">
     <div class="ui-container ui-container--ease">
         <input
             id="ease"

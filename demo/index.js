@@ -4,6 +4,7 @@ var Director = require('director');
 var ProgressiveBasicExperiment = require('./experiments/progressive-basic');
 var ProgressiveTweensExperiment = require('./experiments/progressive-tweens');
 var StreamingTweensExperiment = require('./experiments/streaming-tweens');
+var TweenPlaygroundExperiment = require('./experiments/tween-playground');
 
 var experimentTitleContainer;
 var experimentView;
@@ -31,10 +32,12 @@ $(function() {
     var progressiveBasicExperiment = new ProgressiveBasicExperiment(experimentView);
     var progressiveTweensExperiment = new ProgressiveTweensExperiment(experimentView);
     var streamingTweensExperiment = new StreamingTweensExperiment(experimentView);
+    var tweenPlaygroundExperiment = new TweenPlaygroundExperiment(experimentView);
 
     new Director.Router({
         '/progressive-basic': loadExperiment('/progressive-basic', progressiveBasicExperiment),
         '/progressive-tweens': loadExperiment('/progressive-tweens', progressiveTweensExperiment),
-        '/streaming-tweens': loadExperiment('/streaming-tweens', streamingTweensExperiment)
+        '/streaming-tweens': loadExperiment('/streaming-tweens', streamingTweensExperiment),
+        '/tween-playground': loadExperiment('/tween-playground', tweenPlaygroundExperiment)
     }).init();
 });

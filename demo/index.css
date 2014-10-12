@@ -50,3 +50,15 @@ body {
         position: absolute;
         transform: translateY(-50%) translateX(-50%);
     }
+
+
+.experiment--tween-playground__ui {
+    
+}
+    .experiment--tween-playground .experiment__stage__ball {
+        background-color: #F00;
+        box-shadow: 0 0 15px #000 inset;
+        border-radius: 50%;
+        position: absolute;
+        transform: translateY(-50%) translateX(-50%);
+    }
