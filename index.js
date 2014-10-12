@@ -182,14 +182,6 @@ module.exports = (function() {
                 }
             }
 
-
-            if(this._state === this.states.PAUSED) {
-                this._lastFrameTime = 0;
-                this._nextFrameDesiredTime = 0;
-
-                this.emit('resume');
-            }
-
             if(this._state !== this.states.PLAYING) {
                 if(this._isSeeking) {
                     this._finishSeeking();
@@ -201,16 +193,20 @@ module.exports = (function() {
                     this._requestedFrame = requestAnimationFrame(this._frame);
                 }
 
-                var toForward = (this._direction === this.directions.FORWARD);
-
                 this._playingStartTime = 0;
                 this._recordingStartTime = this._lastRecordingTime;
-                this._recordingEndTime = (toForward ? this._toUs(this._keyframes[this._keyframes.length - 1].time) : 0);
+                this._recordingEndTime = (this._direction === this.directions.FORWARD ?
+                    this._toUs(this._keyframes[this._keyframes.length - 1].time) :
+                    0);
 
                 this._lastFrameTime = 0;
                 this._nextFrameDesiredTime = 0;
 
-                this.emit('play');
+                if(this._state === this.states.PAUSED) {
+                    this.emit('resume');
+                } else {
+                    this.emit('play');
+                }
             }
 
             if(('undefined' !== typeof fromTime && (fromTime !== null)) && !((this._lastRecordingTime === -1) && (fromTime === 0))) {
@@ -346,7 +342,7 @@ module.exports = (function() {
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime;
-                if(this._isSeeking && (this._seekingMode === this.seeking.OMIT_FRAMES)) {
+                if(this._isSeeking && (this._seekingMode === this.seeking.OMIT_FRAMES) && (this._state !== this.states.PLAYING)) {
                     endKeyframeTime = this._lastRecordingTime + (toForward ? 1 : -1);
                 } else {
                     endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));

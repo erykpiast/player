@@ -11,7 +11,7 @@ module.exports = (function() {
     function UI(container, player, options) {
         this._player = player;
 
-        options = extend({
+        options = extend(options, {
             direction: player.directions.FORWARD
         }, options);
 

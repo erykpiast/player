@@ -85,7 +85,7 @@ module.exports = (function() {
             //     this._keyframeHandler(current, keyframes[index + 1] || nextKeyframe, currentRecordingTime);
             // }, this);
 
-            if(keyframes[keyframes.length - 1]) {
+            if(keyframes.length) {
                 this._keyframeHandler(
                     keyframes[keyframes.length - 1],
                     nextKeyframe,
@@ -118,14 +118,6 @@ module.exports = (function() {
                 if(nextKeyframe) {
                     var from = (toForward ? keyframe : nextKeyframe);
                     var to = (toForward ? nextKeyframe : keyframe);
-
-                    console.group('info');
-                    console.log('currentTime', keyframe.time);
-                    console.log('startTime', from.time);
-                    console.log('endTime', to.time);
-                    console.log('from', from.x);
-                    console.log('to', to.x);
-                    console.groupEnd();
 
                     var self = this;
                     this._tween = new TweenJs.Tween({
