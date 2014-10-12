@@ -77,17 +77,6 @@ module.exports = (function() {
         // unload: function() {
         //     Experiment.prototype.unload.call(this);
         // },
-        _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
-            // keyframes.forEach(function(current, index, keyframes) {
-            //     this._keyframeHandler(current, keyframes[index + 1] || nextKeyframe, currentRecordingTime);
-            // }, this);
-    
-            if(keyframes[keyframes.length - 1]) {
-                this._keyframeHandler(keyframes[keyframes.length - 1], nextKeyframe, currentRecordingTime);
-            }
-
-            TweenJs.update(currentRecordingTime);
-        },
         _createKeyframes: function() {
             function _trajectory(x) {
                 return Math.sin(x);
@@ -106,30 +95,47 @@ module.exports = (function() {
 
             return (this._keyframes = keyframes);
         },
-        _keyframeHandler: function(keyframe, nextKeyframe, currentRecordingTime) {
+        _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
+            // keyframes.forEach(function(current, index, keyframes) {
+            //     this._keyframeHandler(current, keyframes[index + 1] || nextKeyframe, currentRecordingTime);
+            // }, this);
+            if(keyframes.length) {
+                this._keyframeHandler(
+                    keyframes[keyframes.length - 1],
+                    nextKeyframe,
+                    this._player.direction === this._player.directions.FORWARD
+                );
+            }
+
+            TweenJs.update(currentRecordingTime);
+        },
+        _keyframeHandler: function(keyframe, nextKeyframe, toForward) {
             if(this.conf.ease) {
                 if(this._tween) {
                     this._tween.stop();
                 }
 
-                if(!nextKeyframe) {
-                    nextKeyframe = keyframe;
-                }
+                if(nextKeyframe) {
+                    var from = (toForward ? keyframe : nextKeyframe);
+                    var to = (toForward ? nextKeyframe : keyframe);
 
-                var self = this;
-                this._tween = new TweenJs.Tween({
-                    x: keyframe.x,
-                    y: keyframe.y
-                })
-                .to({
-                    x: nextKeyframe.x,
-                    y: nextKeyframe.y
-                }, Math.max(Math.abs(nextKeyframe.time - keyframe.time), 0.0001))
-                // .easing(TweenJs.Easing.Elastic.InOut)
-                .onUpdate(function() {
-                    self._updateBall(this.x, this.y);
-                })
-                .start(Math.min(keyframe.time, nextKeyframe.time));
+                    var self = this;
+                    this._tween = new TweenJs.Tween({
+                        x: from.x,
+                        y: from.y
+                    })
+                    .to({
+                        x: to.x,
+                        y: to.y
+                    }, to.time - from.time)
+                    // .easing(TweenJs.Easing.Elastic.InOut)
+                    .onUpdate(function() {
+                        self._updateBall(this.x, this.y);
+                    })
+                    .start(from.time);
+                } else {
+                    this._updateBall(keyframe.x, keyframe.y);
+                }
             } else {
                 this._updateBall(keyframe.x, keyframe.y);
             }

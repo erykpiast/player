@@ -45,7 +45,7 @@ module.exports = (function() {
                 this.set('currentSpeed', player.speed);
             },
             seek: function(e) {
-                player.seek(Math.round(e.node.value * player.lastFrameTime));
+                player.seek(Math.round(parseFloat(e.node.value, 10) * player.lastFrameTime));
             }
         });
 

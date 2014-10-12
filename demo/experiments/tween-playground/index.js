@@ -84,7 +84,7 @@ module.exports = (function() {
             // keyframes.forEach(function(current, index, keyframes) {
             //     this._keyframeHandler(current, keyframes[index + 1] || nextKeyframe, currentRecordingTime);
             // }, this);
-    
+
             if(keyframes[keyframes.length - 1]) {
                 this._keyframeHandler(
                     keyframes[keyframes.length - 1],
@@ -96,7 +96,7 @@ module.exports = (function() {
             TweenJs.update(currentRecordingTime);
         },
         _createKeyframes: function() {
-            var framesCount = 10;
+            var framesCount = 100;
             var keyframes = [ ];
 
             for (var i = 0; i <= framesCount; i++) {
@@ -120,8 +120,9 @@ module.exports = (function() {
                     var to = (toForward ? nextKeyframe : keyframe);
 
                     console.group('info');
-                    console.log('startTime', keyframe.time);
-                    console.log('duration', to.time - from.time);
+                    console.log('currentTime', keyframe.time);
+                    console.log('startTime', from.time);
+                    console.log('endTime', to.time);
                     console.log('from', from.x);
                     console.log('to', to.x);
                     console.groupEnd();
@@ -137,9 +138,9 @@ module.exports = (function() {
                     .onUpdate(function() {
                         self._updateBall(this.x);
                     })
-                    .start(keyframe.time);
+                    .start(from.time);
                 } else {
-                    this._updateBall(keyframe.x);    
+                    this._updateBall(keyframe.x);
                 }
             } else {
                 this._updateBall(keyframe.x);
