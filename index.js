@@ -189,18 +189,11 @@ module.exports = (function() {
 
                 this._state = this.states.PLAYING;
 
-                if(!this._requestedFrame) {
-                    this._requestedFrame = requestAnimationFrame(this._frame);
-                }
-
                 this._playingStartTime = 0;
                 this._recordingStartTime = this._lastRecordingTime;
                 this._recordingEndTime = (this._direction === this.directions.FORWARD ?
                     this._toUs(this._keyframes[this._keyframes.length - 1].time) :
                     0);
-
-                this._lastFrameTime = 0;
-                this._nextFrameDesiredTime = 0;
 
                 if(this._state === this.states.PAUSED) {
                     this.emit('resume');
@@ -209,7 +202,16 @@ module.exports = (function() {
                 }
             }
 
-            if(('undefined' !== typeof fromTime && (fromTime !== null)) && !((this._lastRecordingTime === -1) && (fromTime === 0))) {
+            this._startPlayingIfPaused();
+
+            // if fromTime is defined but not if recording was not played ever and desired time is 0
+            // (seeking doesn't make sense but technically difference between current and desired time is not 0)
+            if(('undefined' !== typeof fromTime) &&
+                (fromTime !== null) &&
+                    !((this._lastRecordingTime === -1) &&
+                        (fromTime === 0)
+                    )
+            ) {
                 this.seek(fromTime);
             }
         },
@@ -301,9 +303,7 @@ module.exports = (function() {
                 this._lastRecordingTime = this._toUs(toTime);
             }
 
-            if(this._state === this.states.PAUSED) {
-                this._requestedFrame = requestAnimationFrame(this._frame);
-            }
+            this._startPlayingIfPaused();
 
             this.emit('seekstart');
         },
@@ -519,6 +519,13 @@ module.exports = (function() {
             }
 
             this.emit('seekend');
+        },
+        _startPlayingIfPaused: function() {
+            if(!this._requestedFrame) {
+                this._lastFrameTime = 0;
+                this._nextFrameDesiredTime = 0;
+                this._requestedFrame = requestAnimationFrame(this._frame);
+            }
         },
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
