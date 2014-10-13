@@ -10,7 +10,7 @@ var Player = proxyquire('../index', {
 });
 
 
-describe('Player class test', function() {
+xdescribe('Player class test', function() {
 
     it('Should be a function and should be instantiated', function() {
         expect(typeof Player).toBe('function');
@@ -33,7 +33,7 @@ describe('Player class test', function() {
 });
 
 
-describe('Player instance test', function() {
+xdescribe('Player instance test', function() {
     var player;
 
     beforeEach(function() {
@@ -69,7 +69,7 @@ describe('Player instance test', function() {
 });
 
 
-describe('Player destroying test', function() {
+xdescribe('Player destroying test', function() {
     var player;
     var drawingFn;
 
@@ -141,7 +141,7 @@ describe('Player destroying test', function() {
 });
 
 
-describe('Player.prototype.play test', function() {
+xdescribe('Player.prototype.play test', function() {
     var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
@@ -286,7 +286,7 @@ describe('Player.prototype.play test', function() {
 });
 
 
-describe('Player.prototype.play with various speeds test', function() {
+xdescribe('Player.prototype.play with various speeds test', function() {
     var speed = 1;
     var player;
     var drawingFn;
@@ -415,7 +415,7 @@ describe('Player.prototype.play with various speeds test', function() {
 });
 
 
-describe('Player.prototype.pause test', function() {
+xdescribe('Player.prototype.pause test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -505,7 +505,7 @@ describe('Player.prototype.pause test', function() {
 });
 
 
-describe('Player.prototype.stop test', function() {
+xdescribe('Player.prototype.stop test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -830,7 +830,7 @@ describe('Player synchronization test', function() {
 });
 
 
-describe('Player synchronization test BACKWARD', function() {
+xdescribe('Player synchronization test BACKWARD', function() {
     var framesCount = 200;
     var player;
     var drawingFn;
@@ -1093,7 +1093,7 @@ describe('Player synchronization test BACKWARD', function() {
 });
 
 
-describe('Player.prototype.seek test', function() {
+xdescribe('Player.prototype.seek test', function() {
     var player;
     var drawingFn;
     var drawingFnCalls;
@@ -1472,7 +1472,7 @@ describe('Player.prototype.seek test', function() {
 });
 
 
-describe('Player integration test', function() {
+xdescribe('Player integration test', function() {
     var frameTime = 20;
     var player;
     var drawingFn;
