@@ -10,7 +10,7 @@ var Player = proxyquire('../index', {
 });
 
 
-xdescribe('Player class test', function() {
+describe('Player class test', function() {
 
     it('Should be a function and should be instantiated', function() {
         expect(typeof Player).toBe('function');
@@ -33,7 +33,7 @@ xdescribe('Player class test', function() {
 });
 
 
-xdescribe('Player instance test', function() {
+describe('Player instance test', function() {
     var player;
 
     beforeEach(function() {
@@ -69,7 +69,7 @@ xdescribe('Player instance test', function() {
 });
 
 
-xdescribe('Player destroying test', function() {
+describe('Player destroying test', function() {
     var player;
     var drawingFn;
 
@@ -141,7 +141,7 @@ xdescribe('Player destroying test', function() {
 });
 
 
-xdescribe('Player.prototype.play test', function() {
+describe('Player.prototype.play test', function() {
     var frameTime = Math.round(1000 / 50);
     var player;
     var drawingFn;
@@ -286,7 +286,7 @@ xdescribe('Player.prototype.play test', function() {
 });
 
 
-xdescribe('Player.prototype.play with various speeds test', function() {
+describe('Player.prototype.play with various speeds test', function() {
     var speed = 1;
     var player;
     var drawingFn;
@@ -383,39 +383,39 @@ xdescribe('Player.prototype.play with various speeds test', function() {
     }
 
     it('Should play 23.976fps recording with normal speed', _testSpeed(1, 23.976, 100));
-    xit('Should play 25fps recording with normal speed', _testSpeed(1, 25, 100));
-    xit('Should play 30fps recording with normal speed', _testSpeed(1, 30, 100));
-    xit('Should play 60fps recording with normal speed', _testSpeed(1, 60, 100));
+    it('Should play 25fps recording with normal speed', _testSpeed(1, 25, 100));
+    it('Should play 30fps recording with normal speed', _testSpeed(1, 30, 100));
+    it('Should play 60fps recording with normal speed', _testSpeed(1, 60, 100));
 
     it('Should play 23.976fps recording with double speed', _testSpeed(2, 23.976, 100));
-    xit('Should play 25fps recording with double speed', _testSpeed(2, 25, 100));
-    xit('Should play 30fps recording with double speed', _testSpeed(2, 30, 100));
-    xit('Should play 60fps recording with double speed', _testSpeed(2, 60, 100));
+    it('Should play 25fps recording with double speed', _testSpeed(2, 25, 100));
+    it('Should play 30fps recording with double speed', _testSpeed(2, 30, 100));
+    it('Should play 60fps recording with double speed', _testSpeed(2, 60, 100));
 
     it('Should play 23.976fps recording with x4 speed', _testSpeed(4, 23.976, 100));
-    xit('Should play 25fps recording with x4 speed', _testSpeed(4, 25, 100));
-    xit('Should play 30fps recording with x4 speed', _testSpeed(4, 30, 100));
-    xit('Should play 60fps recording with x4 speed', _testSpeed(4, 60, 100));
+    it('Should play 25fps recording with x4 speed', _testSpeed(4, 25, 100));
+    it('Should play 30fps recording with x4 speed', _testSpeed(4, 30, 100));
+    it('Should play 60fps recording with x4 speed', _testSpeed(4, 60, 100));
 
     it('Should play 23.976fps recording with super high speed', _testSpeed(64, 23.976, 100));
-    xit('Should play 25fps recording with super high speed', _testSpeed(64, 25, 100));
-    xit('Should play 30fps recording with super high speed', _testSpeed(64, 30, 100));
-    xit('Should play 60fps recording with super high speed', _testSpeed(64, 60, 100));
+    it('Should play 25fps recording with super high speed', _testSpeed(64, 25, 100));
+    it('Should play 30fps recording with super high speed', _testSpeed(64, 30, 100));
+    it('Should play 60fps recording with super high speed', _testSpeed(64, 60, 100));
 
     it('Should play 23.976fps recording with slow speed', _testSpeed(0.5, 23.976, 100));
-    xit('Should play 25fps recording with slow speed', _testSpeed(0.5, 25, 100));
-    xit('Should play 30fps recording with slow speed', _testSpeed(0.5, 30, 100));
-    xit('Should play 60fps recording with slow speed', _testSpeed(0.5, 60, 100));
+    it('Should play 25fps recording with slow speed', _testSpeed(0.5, 25, 100));
+    it('Should play 30fps recording with slow speed', _testSpeed(0.5, 30, 100));
+    it('Should play 60fps recording with slow speed', _testSpeed(0.5, 60, 100));
 
     it('Should play 23.976fps recording with super slow speed', _testSpeed(0.1, 23.976, 100));
-    xit('Should play 25fps recording with super slow speed', _testSpeed(0.1, 25, 100));
-    xit('Should play 30fps recording with super slow speed', _testSpeed(0.1, 30, 100));
-    xit('Should play 60fps recording with super slow speed', _testSpeed(0.1, 60, 100));
+    it('Should play 25fps recording with super slow speed', _testSpeed(0.1, 25, 100));
+    it('Should play 30fps recording with super slow speed', _testSpeed(0.1, 30, 100));
+    it('Should play 60fps recording with super slow speed', _testSpeed(0.1, 60, 100));
 
 });
 
 
-xdescribe('Player.prototype.pause test', function() {
+describe('Player.prototype.pause test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -505,7 +505,7 @@ xdescribe('Player.prototype.pause test', function() {
 });
 
 
-xdescribe('Player.prototype.stop test', function() {
+describe('Player.prototype.stop test', function() {
     var player;
     var drawingFn;
     var exampleFrames = (function(count, difference) {
@@ -830,7 +830,7 @@ describe('Player synchronization test', function() {
 });
 
 
-xdescribe('Player synchronization test BACKWARD', function() {
+describe('Player synchronization test BACKWARD', function() {
     var framesCount = 200;
     var player;
     var drawingFn;
@@ -871,7 +871,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
     function _maxTimeDiff(drawingFnCalls) {
         return drawingFnCalls.filter(function(call) {
             return (call.index === 0);
-        }).map(function(call) {
+        }).map(function(call, index) {
             return Math.abs(parseFloat((lastKeyframeTime - call.frameTime - (call.realTime - playingStart)).toFixed(3), 10));
         }).reduce(function(a,b) {
             return Math.max(Math.abs(a), Math.abs(b));
@@ -909,7 +909,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
             });
 
             player = new Player(exampleFrames = _createFrames(framesCount, keyframesDiff), drawingFn);
-            lastKeyframeTime = exampleFrames[exampleFrames.length - 2].time;
+            lastKeyframeTime = exampleFrames[exampleFrames.length - 1].time;
 
             player.play(exampleFrames[exampleFrames.length - 1].time, player.directions.BACKWARD);
             player.on('start', function(time) {
@@ -918,17 +918,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
 
             player.on('end', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
-                // if frames are more frequent than keyframes, when playing from the end, it will be offset 
-                // equal to difference between keyframe and frame time
-                //
-                //                         +- the first keyframe emitted when playing
-                //                         |    +- start of playing
-                //                         |    |     +- last keyframe, emitted before playing
-                // FRAMES:    0  10       980  990  1000
-                // KEYFRAMES: 0     ...   980   |   1000
-                //                         |    |
-                //                         +----+ - 10 ms offset from playing start to the first keyframe
-                expect(_maxTimeDiff(drawingFnCalls.slice(1))).toBe(Math.max(0, keyframesDiff - framesDiff));
+                expect(_maxTimeDiff(drawingFnCalls)).toBe(0);
 
                 if('function' === typeof mixin) {
                     mixin(keyframesDiff, framesDiff, exampleFrames);
@@ -943,29 +933,27 @@ xdescribe('Player synchronization test BACKWARD', function() {
     it('Should play exactly two keyframes per frame if time difference between ' +
         'keyframes is twice as less than difference between frames',
         _test(10, 20, function(keyframesDiff, framesDiff) {
-            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) + 1);
+            expect(drawingFn.calls.count()).toEqual(framesCount / (framesDiff / keyframesDiff));
 
-            drawingFn.calls.allArgs().slice(1, -1).map(function(args) {
+            drawingFn.calls.allArgs().map(function(args) {
                 return args[0]; // keyframes
             }).forEach(function(keyframes) {
                 expect(keyframes.length).toEqual(2);
             });
 
-            expect(drawingFn.calls.argsFor(drawingFn.calls.count() - 1)[0].length).toEqual(1);
+            // expect(drawingFn.calls.argsFor(drawingFn.calls.count() - 1)[0].length).toEqual(1);
         }));
 
     it('Should play exactly two keyframes per frame if time difference between ' +
         'keyframes is four as less than difference between frames',
         _test(10, 40, function(keyframesDiff, framesDiff) {
-            expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) + 1);
+            expect(drawingFn.calls.count()).toEqual(framesCount / (framesDiff / keyframesDiff));
 
-            drawingFn.calls.allArgs().slice(1, -1).map(function(args) {
+            drawingFn.calls.allArgs().map(function(args) {
                 return args[0]; // keyframes
             }).forEach(function(keyframes) {
                 expect(keyframes.length).toEqual(4);
             });
-
-            expect(drawingFn.calls.argsFor(drawingFn.calls.count() - 1)[0].length).toEqual(3);
         }));
 
     it('Should play exactly one keyframe per each two frames if time difference ' +
@@ -974,13 +962,13 @@ xdescribe('Player synchronization test BACKWARD', function() {
         // -1 because in call preceding the 400 last keyframe is emitted
         expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 1);
 
-        drawingFn.calls.allArgs().slice(1, -1).map(function(args) {
+        drawingFn.calls.allArgs().map(function(args) {
             return args[0]; // keyframes
         }).forEach(function(keyframes, index) {
-            if((index % 2) !== 0) {
+            if((index % 2) === 0) {
                 expect(keyframes.length).toEqual(1);
 
-                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 2 - Math.floor(index / 2)]);
+                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 1 - Math.floor(index / 2)]);
             } else {
                 expect(keyframes.length).toEqual(0);
             }
@@ -994,13 +982,13 @@ xdescribe('Player synchronization test BACKWARD', function() {
         expect(drawingFn.calls.count()).toEqual((framesCount / (framesDiff / keyframesDiff)) - 3);
 
         // slice 4 because we omit the first frames made by seeking
-        drawingFn.calls.allArgs().slice(4).map(function(args) {
+        drawingFn.calls.allArgs().map(function(args) {
             return args[0]; // keyframes
         }).forEach(function(keyframes, index) {
             if((index % 4) === 0) {
                 expect(keyframes.length).toEqual(1);
 
-                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 2 - Math.floor(index / 4)]);
+                expect(keyframes[0]).toBe(exampleFrames[exampleFrames.length - 1 - Math.floor(index / 4)]);
             } else {
                 expect(keyframes.length).toEqual(0);
             }
@@ -1018,7 +1006,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
         }, {
             time: 30
         }, {
-            time: 31
+            time: 40
         }];
 
         player = new Player(exampleFrames, drawingFn);
@@ -1029,32 +1017,26 @@ xdescribe('Player synchronization test BACKWARD', function() {
         requestAnimationFrameMock.trigger(1000);
         expect(drawingFn.calls.count()).toBe(0);
 
-        // first keyframe emitted by seeking
+        // first keyframes emitted
         requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
         expect(drawingFn.calls.count()).toBe(1);
-        expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(2);
         expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[exampleFrames.length - 1]);
+        expect(drawingFn.calls.argsFor(0)[0][1]).toBe(exampleFrames[exampleFrames.length - 2]);
 
         // next keyframes emitted in normal way
         requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
         expect(drawingFn.calls.count()).toBe(2);
         expect(drawingFn.calls.argsFor(1)[0].length).toBe(3);
-        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[exampleFrames.length - 2]);
-        expect(drawingFn.calls.argsFor(1)[0][1]).toBe(exampleFrames[exampleFrames.length - 3]);
-        expect(drawingFn.calls.argsFor(1)[0][2]).toBe(exampleFrames[exampleFrames.length - 4]);
-
-        // next keyframes emitted in normal way
-        requestAnimationFrameMock.trigger(1000 + (3 * frameTime));
-        expect(drawingFn.calls.count()).toBe(3);
-        expect(drawingFn.calls.argsFor(2)[0].length).toBe(1);
-        expect(drawingFn.calls.argsFor(2)[0][0]).toBe(exampleFrames[exampleFrames.length - 5]);
+        expect(drawingFn.calls.argsFor(1)[0][0]).toBe(exampleFrames[exampleFrames.length - 3]);
+        expect(drawingFn.calls.argsFor(1)[0][1]).toBe(exampleFrames[exampleFrames.length - 4]);
+        expect(drawingFn.calls.argsFor(1)[0][2]).toBe(exampleFrames[exampleFrames.length - 5]);
     });
 
     it('Should emit all keyframes for time that passed between current and last frame even if it is bigger than estimated time',
     function() {
         var frameTime = 20;
         exampleFrames = _createFrames(100, frameTime);
-        exampleFrames.push({ time: exampleFrames[exampleFrames.length - 1].time + 1 }); // to ignore initial seeking more easily 
 
         player = new Player(exampleFrames, drawingFn);
 
@@ -1064,7 +1046,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
         requestAnimationFrameMock.trigger(1000);
         expect(drawingFn.calls.count()).toBe(0);
 
-        // first keyframe emitted by seeking
+        // first keyframes emitted
         requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
         expect(drawingFn.calls.count()).toBe(1);
         expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
@@ -1093,7 +1075,7 @@ xdescribe('Player synchronization test BACKWARD', function() {
 });
 
 
-xdescribe('Player.prototype.seek test', function() {
+describe('Player.prototype.seek test', function() {
     var player;
     var drawingFn;
     var drawingFnCalls;
@@ -1472,7 +1454,7 @@ xdescribe('Player.prototype.seek test', function() {
 });
 
 
-xdescribe('Player integration test', function() {
+describe('Player integration test', function() {
     var frameTime = 20;
     var player;
     var drawingFn;

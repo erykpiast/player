@@ -326,7 +326,12 @@ module.exports = (function() {
                 var toForward = (this._direction === this.directions.FORWARD);
 
                 // emit start signal on first "real" keyframe of playing
-                if(!this._playingStartTime && !this._isSeeking) {
+                // when seeking in default mode the signal can be emitted on the first frame
+                // in PLAY_FRAMES mode we want to emit it after seeking, on the first frame of playing
+                if(!this._playingStartTime &&
+                    (this._state === this.states.PLAYING) &&
+                    (!this._isSeeking || (this._seekingMode === this.seeking.OMIT_FRAMES))
+                ) {
                     this._playingStartTime = currentTime;
 
                     this.emit('start', this._toMs(this._playingStartTime));
@@ -342,7 +347,11 @@ module.exports = (function() {
 
                 var startKeyframeTime = this._lastRecordingTime;
                 var endKeyframeTime;
-                if(this._isSeeking && (this._seekingMode === this.seeking.OMIT_FRAMES) && (this._state !== this.states.PLAYING)) {
+                // when seeking in default mode when recording is paused we want to emit only one frame, the closest to desired time
+                if(this._isSeeking &&
+                    (this._seekingMode === this.seeking.OMIT_FRAMES) &&
+                    (this._state !== this.states.PLAYING)
+                ) {
                     endKeyframeTime = this._lastRecordingTime + (toForward ? 1 : -1);
                 } else {
                     endKeyframeTime = startKeyframeTime + (this._adaptToSpeed(frameDuration) * (toForward ? 1 : -1));
