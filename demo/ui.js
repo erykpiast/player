@@ -54,11 +54,11 @@ module.exports = (function() {
         }.bind(this);
 
         this._player
-            .on('play', updatePlayingStatus)
+            .on('playing', updatePlayingStatus)
             .on('pause', updatePlayingStatus)
-            .on('stop', updatePlayingStatus)
-            .on('end', updatePlayingStatus)
-            .on('progress', function(currentRecordingTime) {
+            .on('abort', updatePlayingStatus)
+            .on('ended', updatePlayingStatus)
+            .on('timeupdate', function(currentRecordingTime) {
                 this.view.set('progress', currentRecordingTime / player.lastFrameTime);
                 this.view.set('fps', player.fps);
             }.bind(this));
