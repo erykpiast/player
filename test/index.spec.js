@@ -136,7 +136,7 @@ describe('Player destroying test', function() {
 
     it('Should emit stop signal when player is playing and destroy method is called', function() {
         var stopHandler = jasmine.createSpy('stopHandler');
-        player.on('stop', stopHandler);
+        player.on('abort', stopHandler);
 
         player.play();
 
@@ -191,7 +191,7 @@ describe('Player.prototype.play test', function() {
             });
         });
         player = new Player(exampleFrames, drawingFn);
-        player.on('start', function(time) {
+        player.on('playing', function(time) {
             playingStart = time;
         });
     });
@@ -207,7 +207,7 @@ describe('Player.prototype.play test', function() {
     });
 
     it('Should call drawer function once for each frame and in order', function(done) {
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFnCalls.length).toEqual(exampleFrames.length);
             drawingFn.calls.allArgs().forEach(function(args, index) {
                 expect(args[0][0]).toBe(exampleFrames[index]);
@@ -220,7 +220,7 @@ describe('Player.prototype.play test', function() {
     });
 
     it('Should call drawer function with no offset for the first keyframe if keyframes times are equal to frame times ', function(done) {
-        player.on('end', function() {
+        player.on('ended', function() {
             drawingFnCalls.filter(function(call) {
                 return (call.index === 0);
             }).forEach(function(call) {
@@ -236,7 +236,7 @@ describe('Player.prototype.play test', function() {
     it('Should allow to start playing from specified time', function(done) {
         var startTime = 1000;
 
-        player.on('end', function() {
+        player.on('ended', function() {
             var firstKeyframe = drawingFn.calls.argsFor(0)[0][0];
             var firstKeyframeIndex = exampleFrames.indexOf(firstKeyframe);
             var framesToPlay = exampleFrames.slice(firstKeyframeIndex);
@@ -255,7 +255,7 @@ describe('Player.prototype.play test', function() {
     });
 
     it('Should allow to start playing from end to begin', function(done) {
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFn.calls.argsFor(0)[0][0]).toBe(exampleFrames[exampleFrames.length - 1]);
 
             expect(drawingFnCalls.length).toEqual(exampleFrames.length);
@@ -272,7 +272,7 @@ describe('Player.prototype.play test', function() {
     it('Should allow to start playing from specified time to begin', function(done) {
         var startTime = 1000;
 
-        player.on('end', function() {
+        player.on('ended', function() {
             var firstKeyframe = drawingFn.calls.argsFor(0)[0][0];
             var firstKeyframeIndex = exampleFrames.indexOf(firstKeyframe);
             var framesToPlay = exampleFrames.slice(0, firstKeyframeIndex + 1).reverse();
@@ -368,7 +368,7 @@ describe('Player.prototype.play with various speeds test', function() {
     function _testSpeed(testedSpeed, framerate, framesCount) {
         return function(done) {
             player = new Player(_createFrames(framesCount, 1000 / framerate), drawingFn);
-            player.on('start', function(startTime) {
+            player.on('playing', function(startTime) {
                 playingStart = startTime;
             });
 
@@ -378,7 +378,7 @@ describe('Player.prototype.play with various speeds test', function() {
 
             player.play();
 
-            player.on('end', function() {
+            player.on('ended', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
 
                 // max time difference is two frames
@@ -465,7 +465,7 @@ describe('Player.prototype.pause test', function() {
             });
         });
         player = new Player(exampleFrames, drawingFn);
-        player.on('start', function() {
+        player.on('playing', function() {
             playingStart = Date.now();
         });
         player.play();
@@ -499,7 +499,7 @@ describe('Player.prototype.pause test', function() {
     it('Should call drawer function once for all left frames after resuming playing', function(done) {
         player.play();
 
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFnCalls.length).toEqual(exampleFrames.length);
             drawingFnCalls.forEach(function(call, index) {
                 expect(call.keyframe).toBe(exampleFrames[index]);
@@ -549,7 +549,7 @@ describe('Player.prototype.stop test', function() {
         stopHandler = jasmine.createSpy('stopHandler');
         player = new Player(exampleFrames, drawingFn);
         player.play();
-        player.on('stop', stopHandler);
+        player.on('abort', stopHandler);
 
         setTimeout(function() {
             player.stop();
@@ -582,7 +582,7 @@ describe('Player.prototype.stop test', function() {
 
         player.play();
 
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFnCalls[0]).toBe(exampleFrames[0]);
             expect(drawingFnCalls.length).toEqual(exampleFrames.length);
 
@@ -675,13 +675,13 @@ describe('Player synchronization test', function() {
             });
 
             player = new Player(exampleFrames = _createFrames(framesCount, keyframesDiff), drawingFn);
-            player.on('start', function(startTime) {
+            player.on('playing', function(startTime) {
                 playingStart = startTime;
             });
 
             player.play();
 
-            player.on('end', function() {
+            player.on('ended', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
                 expect(_maxTimeDiff(drawingFnCalls)).toBe(0);
 
@@ -919,11 +919,11 @@ describe('Player synchronization test BACKWARD', function() {
             lastKeyframeTime = exampleFrames[exampleFrames.length - 1].time;
 
             player.play(exampleFrames[exampleFrames.length - 1].time, player.directions.BACKWARD);
-            player.on('start', function(time) {
+            player.on('playing', function(time) {
                 playingStart = time;
             });
 
-            player.on('end', function() {
+            player.on('ended', function() {
                 expect(drawingFnCalls.length).toEqual(framesCount);
                 expect(_maxTimeDiff(drawingFnCalls)).toBe(0);
 
@@ -1896,7 +1896,7 @@ describe('Player integration test', function() {
         var exampleFrames = _createFrames(100, frameTime);
 
         player = new Player(exampleFrames, drawingFn);
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFn.calls.count()).toBe(exampleFrames.length);
 
             done();
@@ -1911,7 +1911,7 @@ describe('Player integration test', function() {
         var exampleFrames = _createFrames(100, frameTime);
 
         player = new Player(exampleFrames, drawingFn);
-        player.on('end', function() {
+        player.on('ended', function() {
             expect(drawingFn.calls.count()).toBe(exampleFrames.length);
 
             done();
@@ -1927,7 +1927,7 @@ describe('Player integration test', function() {
 
         player = new Player(exampleFrames, drawingFn);
         player.seekingMode = player.seeking.PLAY_FRAMES;
-        player.on('seekend', function() {
+        player.on('seeked', function() {
             expect(drawingFn.calls.count()).toBe(1);
             expect(drawingFn.calls.argsFor(0)[0].length).toBe(40);
             expect(player.isPaused).toBeTruthy();
@@ -1949,7 +1949,7 @@ describe('Player integration test', function() {
 
         player = new Player(exampleFrames, drawingFn);
         player.seekingMode = player.seeking.PLAY_FRAMES;
-        player.on('seekend', function() {
+        player.on('seeked', function() {
             expect(drawingFn.calls.count()).toBe(1);
             expect(drawingFn.calls.argsFor(0)[0].length).toBe(40);
             expect(player.isPaused).toBeTruthy();
@@ -1979,7 +1979,7 @@ describe('Player integration test', function() {
         // initial frame
         requestAnimationFrameMock.trigger(1000);
 
-        player.on('stop', function() {
+        player.on('abort', function() {
             expect(drawingFn.calls.count()).toBe(0);
             expect(player.isStopped).toBeTruthy();
 
