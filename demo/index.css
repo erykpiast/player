@@ -62,3 +62,11 @@ body {
         position: absolute;
         transform: translateY(-50%) translateX(-50%);
     }
+
+
+.experiment--stress-test {
+
+}
+    .experiment--stress-test .experiment__stage__tile {
+        float: left;
+    }
