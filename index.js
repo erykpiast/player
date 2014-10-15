@@ -7,9 +7,25 @@ module.exports = (function() {
     var util = require('util');
 
 
+
+// TODO - more documentation and comments 
+//  - documentation of all public methods, signals
+
+
+
+    /* @constructor Player - creates new instance of player for given recording
+     * @param {array} keyframes - an array of objects representing keyframes of recording
+     * @param {function} drawer - function called on each recording frame
+     * @param {object} options  - configuration object
+     *     @property {string} options.timeKey - name of keyframe property containing the time in milliseconds
+     *     @property {number,enum} options.seekingMode - mode of seeking (one of those from Player.seeking)
+     *     @property {number} options.speed - initial speed of playing
+     *     @property {number} options.seekingSpeed - speed of seeking in PLAY_FRAMES mode
+     *     @property {number} options.lastFramesForAverage - number of last frames to taking into account in measuring FPS value
+     */
     function Player(keyframes, drawer, options) {
-        if(!keyframes || !Array.isArray(keyframes)) {
-            throw new Error('keyframes must be an array');
+        if(!keyframes || !Array.isArray(keyframes) || !keyframes.length) {
+            throw new Error('keyframes must be not empty array');
         }
 
         if(!drawer || ('function' !== typeof drawer)) {
