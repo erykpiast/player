@@ -1,6 +1,17 @@
 module.exports = function (grunt) {
 
-    grunt.registerTask('default', [ 'demo' ]);
+    grunt.registerTask('default', [ 'dev' ]);
+
+    grunt.registerTask('dev', [
+        'jshint',
+        'clean:demo',
+        'browserify:demo',
+        'autoprefixer:demo',
+        'notify:build',
+        'http-server:dev',
+        'watch:demo',
+        'clean:demo'
+    ]);
 
     grunt.registerTask('demo', [
         'jshint',
@@ -9,7 +20,6 @@ module.exports = function (grunt) {
         'autoprefixer:demo',
         'notify:build',
         'http-server:demo',
-        'watch:demo',
         'clean:demo'
     ]);
 
@@ -171,7 +181,7 @@ module.exports = function (grunt) {
             ]
         },
         'http-server': {
-            demo: {
+            dev: {
                 root: '.',
                 port: '<%= config.demo.server.port %>',
                 host: '<%= config.demo.server.host %>',
@@ -180,6 +190,15 @@ module.exports = function (grunt) {
                 autoIndex: true,
                 defaultExt: 'html',
                 runInBackground: true
+            },
+            demo: {
+                root: '.',
+                port: '<%= config.demo.server.port %>',
+                host: '<%= config.demo.server.host %>',
+                cache: -1,
+                showDir : true,
+                autoIndex: true,
+                defaultExt: 'html'
             }
         },
         karma: {

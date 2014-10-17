@@ -529,6 +529,7 @@ module.exports = (function() {
             }
 
             this.emit('seeked');
+            this.emit('timeupdate', this._currentRecordingTime);
         },
         _startPlayingIfPaused: function() {
             if(!this._requestedFrame) {
