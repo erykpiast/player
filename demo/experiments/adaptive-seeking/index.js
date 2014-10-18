@@ -101,9 +101,20 @@ module.exports = (function() {
             this._player
                 .on('seeking', function() {
                     this._stage.classList.add('is-seeking');
+                    
+                    this._currentSeekingSpeed = 128;
+                    this._seekingSpeeds = [ ];
+                    this._seekingFps = [ ];
                 }.bind(this))
                 .on('seeked', function() {
                     this._stage.classList.remove('is-seeking');
+                    
+                    console.log('average seeking speed', this._seekingSpeeds.reduce(function (prev, curr) {
+                        return prev + curr;
+                    }) / this._seekingSpeeds.length);
+                    console.log('average seeking FPS', this._seekingFps.reduce(function (prev, curr) {
+                        return prev + curr;
+                    }) / this._seekingFps.length);
                 }.bind(this));
         },
         _reload: function() {
@@ -149,7 +160,9 @@ module.exports = (function() {
         },
         _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
             if(this._player.isSeeking) {
-                this._ui.view.set('seekingFps', 1000 * 1000 / this._player._averageFrameDuration);
+                var fps = 1000 * 1000 / this._player._averageFrameDuration;
+                this._ui.view.set('seekingFps', fps);
+                this._seekingFps.push(fps);
             }
 
             var toForward = this._player.direction === this._player.directions.FORWARD;
@@ -228,7 +241,7 @@ module.exports = (function() {
                                 self._updateTile(tile, this.width);
                             })
                             .onStop(function() {
-                                self._updateTile(tile, changeKeyframe.width);  
+                                self._updateTile(tile, changeKeyframe.width);
                             })
                             .start(lastTileKeyframe.time);
                         } else {
@@ -304,13 +317,27 @@ module.exports = (function() {
         },
         _adaptiveSeeking: function() {
             var self = this;
+            var minFps = 24;
+            var minSpeed = 2;
+            this._currentSeekingSpeed = 128;
+            this._seekingSpeeds = [ ];
+            this._seekingFps = [ ];
 
             return function() {
-                var speed = lodash.random(32, 64);
+                var currentFps = (1000 * 1000 / this._averageFrameDuration);
 
-                self._ui.view.set('seekingSpeed', speed);
+                if(currentFps < minFps) {
+                    if((self._currentSeekingSpeed * 3/4) >= minSpeed) {
+                        self._currentSeekingSpeed /= 4/3;
+                    }
+                } else {
+                    self._currentSeekingSpeed *= 2;
+                }
 
-                return speed;
+                self._ui.view.set('seekingSpeed', self._currentSeekingSpeed);
+                self._seekingSpeeds.push(self._currentSeekingSpeed);
+
+                return self._currentSeekingSpeed;
             };
         }
     });

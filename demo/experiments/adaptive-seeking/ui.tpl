@@ -29,10 +29,10 @@
     </div>
     <div class="ui-container ui-container--seeking-speed">
         <span class="ui-label ui-label--seeking-speed">Seeking speed:</span>
-        <span class="ui-label ui-label--current-seeking-speed">{{ seekingSpeed }}</span>
+        <span class="ui-label ui-label--current-seeking-speed">{{ ('number' === typeof seekingSpeed ? seekingSpeed.toFixed(2) : seekingSpeed) }}</span>
     </div>
     <div class="ui-container ui-container--seeking-fps">
         <span class="ui-label ui-label--seeking-fps">Seeking FPS:</span>
-        <span class="ui-label ui-label--current-seeking-fps">{{ seekingFps.toFixed(2) }}</span>
+        <span class="ui-label ui-label--current-seeking-fps">{{ ('number' === typeof seekingFps ? seekingFps.toFixed(2) : seekingFps) }}</span>
     </div>
 </div>
