@@ -44,7 +44,10 @@ module.exports = (function() {
             tileSize: 50,
             framesCount: 2000,
             tilesPerFrame: 5,
-            adaptiveSeeking: false
+            adaptiveSeeking: true,
+            minFps: 16,
+            minSpeed: 32,
+            speedChangeStep: 15
         },
         load: function() {
             if(this.conf.adaptiveSeeking) {
@@ -86,6 +89,33 @@ module.exports = (function() {
                 }
             }.bind(this));
 
+            this._ui.view.set('minFps', this.conf.minFps);
+            this._ui.view.observe('minFps', function(value) {
+                var parsed = parseInt(value, 10);
+
+                if((parsed !== this.conf.minFps) && !isNaN(parsed)) {
+                    this.conf.minFps = parsed;
+                }
+            }.bind(this));
+
+
+            this._ui.view.set('minSpeed', this.conf.minSpeed);
+            this._ui.view.observe('minSpeed', function(value) {
+                var parsed = parseInt(value, 10);
+
+                if((parsed !== this.conf.minSpeed) && !isNaN(parsed)) {
+                    this.conf.minSpeed = parsed;
+                }
+            }.bind(this));
+
+            this._ui.view.set('speedChangeStep', this.conf.speedChangeStep);
+            this._ui.view.observe('speedChangeStep', function(value) {
+                var parsed = parseInt(value, 10);
+
+                if((parsed !== this.conf.speedChangeStep) && !isNaN(parsed)) {
+                    this.conf.speedChangeStep = parsed;
+                }
+            }.bind(this));
 
             this._stage.classList.add('experiment__stage--loader-on');
             this._ui.view.set('showLoader', true);
@@ -102,6 +132,7 @@ module.exports = (function() {
                 .on('seeking', function() {
                     this._stage.classList.add('is-seeking');
                     
+                    this._seekingStart = performance.now();
                     this._currentSeekingSpeed = 128;
                     this._seekingSpeeds = [ ];
                     this._seekingFps = [ ];
@@ -109,12 +140,17 @@ module.exports = (function() {
                 .on('seeked', function() {
                     this._stage.classList.remove('is-seeking');
                     
-                    console.log('average seeking speed', this._seekingSpeeds.reduce(function (prev, curr) {
-                        return prev + curr;
-                    }) / this._seekingSpeeds.length);
-                    console.log('average seeking FPS', this._seekingFps.reduce(function (prev, curr) {
-                        return prev + curr;
-                    }) / this._seekingFps.length);
+                    console.log('seeking time', (performance.now() - this._seekingStart / 1000).toFixed(2), 's');
+                    if(this._seekingSpeeds.length) {
+                        console.log('average seeking speed', this._seekingSpeeds.reduce(function (prev, curr) {
+                            return prev + curr;
+                        }) / this._seekingSpeeds.length);
+                    }
+                    if(this._seekingFps.length) {
+                        console.log('average seeking FPS', this._seekingFps.reduce(function (prev, curr) {
+                            return prev + curr;
+                        }) / this._seekingFps.length);
+                    }
                 }.bind(this));
         },
         _reload: function() {
@@ -317,21 +353,30 @@ module.exports = (function() {
         },
         _adaptiveSeeking: function() {
             var self = this;
-            var minFps = 24;
-            var minSpeed = 2;
             this._currentSeekingSpeed = 128;
             this._seekingSpeeds = [ ];
             this._seekingFps = [ ];
 
+
+            function _increase(speed) {
+                return (speed * (1 + (self.conf.speedChangeStep / 100)));
+            }
+
+            function _decrease(speed) {
+                return (speed / (1 + (self.conf.speedChangeStep / 100)));
+            }
+
             return function() {
                 var currentFps = (1000 * 1000 / this._averageFrameDuration);
 
-                if(currentFps < minFps) {
-                    if((self._currentSeekingSpeed * 3/4) >= minSpeed) {
-                        self._currentSeekingSpeed /= 4/3;
-                    }
+                if(currentFps < self.conf.minFps) {
+                    self._currentSeekingSpeed = _decrease(self._currentSeekingSpeed);
                 } else {
-                    self._currentSeekingSpeed *= 2;
+                    self._currentSeekingSpeed = _increase(self._currentSeekingSpeed);
+                }
+
+                if(self._currentSeekingSpeed < self.conf.minSpeed) {
+                    self._currentSeekingSpeed = self.conf.minSpeed;
                 }
 
                 self._ui.view.set('seekingSpeed', self._currentSeekingSpeed);

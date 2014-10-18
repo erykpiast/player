@@ -26,6 +26,38 @@
             type="checkbox"
             checked="{{ adaptiveSeeking }}" />
         <label for="adaptive-seeking">Adaptive seeking</label>
+        {{#if adaptiveSeeking}}
+            <div class="ui-container ui-container--min-fps">
+                <input
+                    id="min-fps"
+                    min="1"
+                    max="60"
+                    step="1"
+                    type="range"
+                    value="{{ minFps }}" />
+                <label for="min-fps">Min. FPS ({{ minFps }})</label>
+            </div>
+            <div class="ui-container ui-container--min-speed">
+                <input
+                    id="min-speed"
+                    min="1"
+                    max="128"
+                    step="1"
+                    type="range"
+                    value="{{ minSpeed }}" />
+                <label for="min-speed">Min. speed ({{ minSpeed }})</label>
+            </div>
+            <div class="ui-container ui-container--speed-change-steep">
+                <input
+                    id="speed-change-steep"
+                    min="1"
+                    max="100"
+                    step="1"
+                    type="range"
+                    value="{{ speedChangeStep }}" />
+                <label for="speed-change-steep">Speed change step ({{ speedChangeStep }})</label>
+            </div>
+        {{/if}}
     </div>
     <div class="ui-container ui-container--seeking-speed">
         <span class="ui-label ui-label--seeking-speed">Seeking speed:</span>
