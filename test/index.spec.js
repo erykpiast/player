@@ -23,17 +23,29 @@ describe('Player class test', function() {
         expect(typeof Player).toBe('function');
 
         expect(function() {
-            new Player([ ], function() { });
+            new Player([ { time: 0 } ], function() { });
         }).not.toThrow();
     });
 
-    it('Should throw an error if the first argument is not an array or the second one is not a function', function() {
+    it('Should throw an error if the first argument is not an non-empty array or the second one is not a function', function() {
         expect(function() {
-            new Player('', function() { });
+            new Player(undefined, function() { });
         }).toThrow();
 
         expect(function() {
-            new Player([ ], { });
+            new Player(null, function() { });
+        }).toThrow();
+
+        expect(function() {
+            new Player({ }, function() { });
+        }).toThrow();
+
+        expect(function() {
+            new Player([ ], function() { });
+        }).toThrow();
+
+        expect(function() {
+            new Player([ { time: 0} ], { });
         }).toThrow();
     });
 
@@ -46,7 +58,7 @@ describe('Player instance test', function() {
     beforeEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
-        player = new Player([ ], function() { });
+        player = new Player([ { time: 0 }], function() { });
     });
 
     afterEach(function() {

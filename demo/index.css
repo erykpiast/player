@@ -70,3 +70,28 @@ body {
     .experiment--stress-test .experiment__stage__tile {
         float: left;
     }
+
+
+.experiment--adaptive-seeking {
+
+}
+    .experiment--adaptive-seeking .experiment__stage:after {
+        background-color: #FFF;
+        bottom: 0;
+        content: "Seeking...";
+        font-family: sans-serif;
+        left: 0;
+        line-height: 500px;
+        opacity: 0;
+        position: absolute;
+        right: 0;
+        text-align: center;
+        top: 0;
+        transition: opacity .2s ease-out;
+    }
+    .experiment--adaptive-seeking .experiment__stage.is-seeking:after {
+        opacity: .9;
+    }
+        .experiment--adaptive-seeking .experiment__stage__tile {
+            float: left;
+        }

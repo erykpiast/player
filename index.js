@@ -32,7 +32,6 @@ module.exports = (function() {
             throw new Error('drawer must be a function');
         }
 
-        // rewrite options >>
         this.defaults = {
             timeKey: 'time',
             speed: 1,
@@ -40,15 +39,10 @@ module.exports = (function() {
             seekingMode: this.seeking.OMIT_FRAMES,
             lastFramesForAverage: 5
         };
-
         options = extend({ }, this.defaults, options);
 
         this._timeKey = options.timeKey;
-        this._speed = options.speed;
-        this._seekingMode = options.seekingMode;
-        this._seekingSpeed = options.seekingSpeed;
         this._lastFramesForAverage = options.lastFramesForAverage;
-        // << rewrite options
 
         // sort keyframes descending by time
         this._keyframes = keyframes.sort(function(a, b) {
@@ -76,12 +70,12 @@ module.exports = (function() {
         // public properties (with getters and/or setters)
         Object.defineProperties(this, {
             speed: this._createSpeedProperty({
-                publicName: 'speed',
-                privateName: '_speed'
+                privateName: '_speed',
+                publicName: 'speed'
             }),
             seekingSpeed: this._createSpeedProperty({
-                publicName: 'seekingSpeed',
-                privateName: '_seekingSpeed'
+                privateName: '_seekingSpeed',
+                publicName: 'seekingSpeed'
             }),
             seekingMode: this._createSettingProperty({
                 publicName: 'seekingMode',
@@ -133,6 +127,13 @@ module.exports = (function() {
                 }
             })
         });
+
+        // rewrite options >>
+        // it's important to do it after getters/setters definitions
+        this.speed = options.speed;
+        this.seekingMode = options.seekingMode;
+        this.seekingSpeed = options.seekingSpeed;
+        // << rewrite options
     }
 
     util.inherits(Player, EventEmitter);
@@ -296,7 +297,7 @@ module.exports = (function() {
 
                     this._speed = this._seekingSpeed;
                     // try to scale current average frame duration to new speed
-                    this._averageFrameDuration = (this._averageFrameDuration * (this._seekingSpeed / this._speed));
+                    this._averageFrameDuration = (this._averageFrameDuration * (this.seekingSpeed / this.speed));
                     this._resetAverageFrameDuration();
                 }
 
@@ -548,27 +549,41 @@ module.exports = (function() {
 
             return {
                 get: function() {
-                    return setVal;
+                    if('function' === typeof setVal) {
+                        return setVal();
+                    } else {
+                        return setVal;
+                    }
                 },
                 set: function(value) {
                     if(this._isSeeking) {
                         throw new Error('you can not set new speed during seeking, sorry');
                     }
 
-                    var parsed = parseFloat(value, 10);
-
-                    if(!isNaN(parsed) && isFinite(parsed)) {
-                        if(parsed > 0) {
+                    if(('function' === typeof value) && (conf.publicName === 'seekingSpeed')) {
+                        if(parsed !== setVal) {
                             this[conf.privateName] = setVal = parsed;
-
-                            if(conf.privateName === 'speed') {
-                                this.emit('ratechange', setVal);
-                            }
-
-                            return parsed;
                         }
                     } else {
-                        throw new TypeError(conf.publicName + ' must be a number');
+                        var parsed = parseFloat(value, 10);
+
+                        if(!isNaN(parsed) && isFinite(parsed) && (parsed > 0)) {
+                            if(parsed !== setVal) {
+                                this[conf.privateName] = setVal = parsed;
+
+                                if(conf.publicName === 'speed') {
+                                    this.emit('ratechange', setVal);
+                                }
+
+                                return parsed;
+                            }
+                        } else {
+                            if(conf.publicName === 'speed') {
+                                throw new TypeError(conf.publicName + ' must be a positive number');
+                            } else if(conf.publicName === 'seekingSpeed') {
+                                throw new TypeError(conf.publicName + ' must be a function or positive number');
+                            }
+                        }
                     }
                 }
             };

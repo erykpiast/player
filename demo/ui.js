@@ -2,7 +2,8 @@ module.exports = (function() {
 
     var Ractive = require('ractive');
     var fs = require('fs');
-    var extend = require('extend');
+    var each = require('foreach');
+    var lodash = require('lodash');
 
 
     var template = fs.readFileSync(__dirname + '/ui.tpl');
@@ -11,9 +12,14 @@ module.exports = (function() {
     function UI(container, player, options) {
         this._player = player;
 
-        options = extend(options, {
-            direction: player.directions.FORWARD
-        }, options);
+        each({
+            direction: player.directions.FORWARD,
+            timelineDebounceTime: 0
+        }, function(value, key) {
+            if(!options.hasOwnProperty(key)) {
+                options[key] = value;
+            }
+        });
 
         this.view = new Ractive({
             el: container,
@@ -44,9 +50,9 @@ module.exports = (function() {
 
                 this.set('currentSpeed', player.speed);
             },
-            seek: function(e) {
+            seek: lodash.debounce(function(e) {
                 player.seek(Math.round(parseFloat(e.node.value, 10) * player.lastFrameTime));
-            }
+            }, options.timelineDebounceTime)
         });
 
         var updatePlayingStatus = function() {

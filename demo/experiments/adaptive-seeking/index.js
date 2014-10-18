@@ -13,7 +13,7 @@ module.exports = (function() {
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
 
-    function StressTest() {
+    function AdaptiveSeeking() {
         Experiment.apply(this, arguments);
 
         $(this._stage).css({
@@ -29,22 +29,30 @@ module.exports = (function() {
 
         this._uiOptions = {
             partial: template.toString(),
-            direction: Player.directions.FORWARD
+            direction: Player.directions.FORWARD,
+            timelineDebounceTime: 40
         };
 
         this._tweens = { };
     }
 
-    util.inherits(StressTest, Experiment);
+    util.inherits(AdaptiveSeeking, Experiment);
 
-    extend(StressTest.prototype, {
+    extend(AdaptiveSeeking.prototype, {
         conf: {
             ease: true,
-            framesCount: 100,
             tileSize: 50,
-            tilesPerFrame: 1
+            framesCount: 2000,
+            tilesPerFrame: 5,
+            adaptiveSeeking: true
         },
         load: function() {
+            if(this.conf.adaptiveSeeking) {
+                this._playerOptions.seekingSpeed = this._adaptiveSeeking();
+            } else {
+                this._playerOptions.seekingSpeed = 1024;
+            }
+
             Experiment.prototype.load.call(this);
 
             this._ui.view.set('ease', this.conf.ease);
@@ -66,20 +74,22 @@ module.exports = (function() {
                 }
             }.bind(this));
 
-            this._ui.view.set('tilesPerFrame', this.conf.tilesPerFrame);
-            this._ui.view.observe('tilesPerFrame', lodash.debounce(function(value) {
-                var parsed = parseInt(value, 10);
-
-                if(parsed !== this.conf.tilesPerFrame) {
-                    this.conf.tilesPerFrame = parsed;
+            this._ui.view.set('adaptiveSeeking', this.conf.adaptiveSeeking);
+            this._ui.view.observe('adaptiveSeeking', function(value) {
+                if(value !== this.conf.adaptiveSeeking) {
+                    this.conf.adaptiveSeeking = value;
 
                     this._reload();
                 }
-            }.bind(this), 1000));
-        },
-        _reload: function() {
-            this.unload();
-            this.load();
+            }.bind(this));
+
+            this._player
+                .on('seeking', function() {
+                    this._stage.classList.add('is-seeking');
+                }.bind(this))
+                .on('seeked', function() {
+                    this._stage.classList.remove('is-seeking');
+                }.bind(this));
         },
         _createKeyframes: function() {
             function _pad(number, digits) {
@@ -268,10 +278,15 @@ module.exports = (function() {
         },
         _getTileSize: function() {
             return parseFloat(Math.sqrt(Math.pow(this.conf.tileSize * 10, 2) / (this.conf.framesCount * this.conf.tilesPerFrame)).toFixed(2), 10);
+        },
+        _adaptiveSeeking: function() {
+            return function() {
+
+            };
         }
     });
 
 
-    return StressTest;
+    return AdaptiveSeeking;
 
 })();

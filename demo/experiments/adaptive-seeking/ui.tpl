@@ -1,4 +1,4 @@
-<div class="experiment--stress-test__ui">
+<div class="experiment--adaptive-seeking__ui">
     <div class="ui-container ui-container--ease">
         <input
             id="ease"
@@ -13,14 +13,11 @@
             checked="{{ backward }}" />
         <label for="backward">Backward</label>
     </div>
-    <div class="ui-container ui-container--tiles-per-frame">
+    <div class="ui-container ui-container--adaptive-seeking">
         <input
-            id="tiles-per-frame"
-            min="1"
-            max="100"
-            step="1"
-            type="range"
-            value="{{ tilesPerFrame }}" />
-        <label for="tiles-per-frame">Tiles per frame ({{ tilesPerFrame }})</label>
+            id="adaptive-seeking"
+            type="checkbox"
+            checked="{{ adaptive-seeking }}" />
+        <label for="adaptive-seeking">Adaptive seeking</label>
     </div>
 </div>
