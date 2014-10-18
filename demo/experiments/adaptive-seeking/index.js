@@ -44,7 +44,7 @@ module.exports = (function() {
             tileSize: 50,
             framesCount: 2000,
             tilesPerFrame: 5,
-            adaptiveSeeking: true
+            adaptiveSeeking: false
         },
         load: function() {
             if(this.conf.adaptiveSeeking) {
@@ -74,6 +74,9 @@ module.exports = (function() {
                 }
             }.bind(this));
 
+            this._ui.view.set('seekingSpeed', this.conf.adaptiveSeeking ? 'dynamic' : this._playerOptions.seekingSpeed);
+            this._ui.view.set('seekingFps', NaN);
+
             this._ui.view.set('adaptiveSeeking', this.conf.adaptiveSeeking);
             this._ui.view.observe('adaptiveSeeking', function(value) {
                 if(value !== this.conf.adaptiveSeeking) {
@@ -83,6 +86,18 @@ module.exports = (function() {
                 }
             }.bind(this));
 
+
+            this._stage.classList.add('experiment__stage--loader-on');
+            this._ui.view.set('showLoader', true);
+            this._ui.view.observe('showLoader', function(value) {
+                if(value) {
+                    this._stage.classList.add('experiment__stage--loader-on');
+                } else {
+                    this._stage.classList.remove('experiment__stage--loader-on');
+                }
+            }.bind(this));
+
+            this._stage.classList.remove('is-seeking');
             this._player
                 .on('seeking', function() {
                     this._stage.classList.add('is-seeking');
@@ -90,6 +105,10 @@ module.exports = (function() {
                 .on('seeked', function() {
                     this._stage.classList.remove('is-seeking');
                 }.bind(this));
+        },
+        _reload: function() {
+            this.unload();
+            this.load();
         },
         _createKeyframes: function() {
             function _pad(number, digits) {
@@ -129,6 +148,10 @@ module.exports = (function() {
             return (this._keyframes = keyframes);
         },
         _frameHandler: function(keyframes, nextKeyframe, currentRecordingTime) {
+            if(this._player.isSeeking) {
+                this._ui.view.set('seekingFps', 1000 * 1000 / this._player._averageFrameDuration);
+            }
+
             var toForward = this._player.direction === this._player.directions.FORWARD;
 
             if(!toForward) {
@@ -280,8 +303,14 @@ module.exports = (function() {
             return parseFloat(Math.sqrt(Math.pow(this.conf.tileSize * 10, 2) / (this.conf.framesCount * this.conf.tilesPerFrame)).toFixed(2), 10);
         },
         _adaptiveSeeking: function() {
-            return function() {
+            var self = this;
 
+            return function() {
+                var speed = lodash.random(32, 64);
+
+                self._ui.view.set('seekingSpeed', speed);
+
+                return speed;
             };
         }
     });

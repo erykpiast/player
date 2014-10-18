@@ -9,7 +9,7 @@ module.exports = (function() {
 
 
 // TODO - more documentation and comments 
-//  - documentation of all public methods, signals
+//  - documentation of all public methods, getters/setters, signals
 
 
 
@@ -69,6 +69,10 @@ module.exports = (function() {
 
         // public properties (with getters and/or setters)
         Object.defineProperties(this, {
+            _speed: this._createSpeedProperty({
+                privateName: '_speed',
+                publicName: '_speed'
+            }),
             speed: this._createSpeedProperty({
                 privateName: '_speed',
                 publicName: 'speed'
@@ -290,12 +294,12 @@ module.exports = (function() {
                     this._isSeeking = true;
 
                     // store settings for normal playing
-                    this._previousSpeed = this._speed;
                     this._previousAverageFrameDuration = this._averageFrameDuration;
                     this._previousDirection = this._direction;
                     this._previousRecordingEndTime = this._recordingEndTime;
 
                     this._speed = this._seekingSpeed;
+
                     // try to scale current average frame duration to new speed
                     this._averageFrameDuration = (this._averageFrameDuration * (this.seekingSpeed / this.speed));
                     this._resetAverageFrameDuration();
@@ -524,10 +528,7 @@ module.exports = (function() {
                 delete this._previousDirection;
             }
 
-            if('undefined' !== typeof this._previousSpeed) {
-                this._speed = this._previousSpeed;
-                delete this._previousSpeed;
-            }
+            this._speed = this.speed;
 
             this.emit('seeked');
             this.emit('timeupdate', this._currentRecordingTime);
@@ -550,19 +551,19 @@ module.exports = (function() {
             return {
                 get: function() {
                     if('function' === typeof setVal) {
-                        return setVal();
+                        return setVal.call(this);
                     } else {
                         return setVal;
                     }
                 },
                 set: function(value) {
-                    if(this._isSeeking) {
+                    if(this._isSeeking && (conf.publicName !== '_speed')) {
                         throw new Error('you can not set new speed during seeking, sorry');
                     }
 
-                    if(('function' === typeof value) && (conf.publicName === 'seekingSpeed')) {
-                        if(parsed !== setVal) {
-                            this[conf.privateName] = setVal = parsed;
+                    if(('function' === typeof value) && (conf.publicName !== 'speed')) {
+                        if(value !== setVal) {
+                            this[conf.privateName] = setVal = value;
                         }
                     } else {
                         var parsed = parseFloat(value, 10);
@@ -580,7 +581,7 @@ module.exports = (function() {
                         } else {
                             if(conf.publicName === 'speed') {
                                 throw new TypeError(conf.publicName + ' must be a positive number');
-                            } else if(conf.publicName === 'seekingSpeed') {
+                            } else {
                                 throw new TypeError(conf.publicName + ' must be a function or positive number');
                             }
                         }
@@ -623,6 +624,7 @@ module.exports = (function() {
 
     Player.prototype.abort = Player.prototype.stop;
     Player.prototype.fastSeek = Player.prototype.seek;
+    Player.prototype.dispoase = Player.prototype.destroy;
 
 
     return Player;

@@ -75,23 +75,70 @@ body {
 .experiment--adaptive-seeking {
 
 }
-    .experiment--adaptive-seeking .experiment__stage:after {
-        background-color: #FFF;
-        bottom: 0;
-        content: "Seeking...";
-        font-family: sans-serif;
-        left: 0;
-        line-height: 500px;
-        opacity: 0;
-        position: absolute;
-        right: 0;
-        text-align: center;
-        top: 0;
-        transition: opacity .2s ease-out;
-    }
-    .experiment--adaptive-seeking .experiment__stage.is-seeking:after {
-        opacity: .9;
-    }
-        .experiment--adaptive-seeking .experiment__stage__tile {
-            float: left;
+            .experiment--adaptive-seeking .experiment__stage__tile {
+                float: left;
+            }
+
+        .experiment--adaptive-seeking .experiment__stage--loader-on:before {
+            background-color: rgba(255, 255, 255, .9);
+            /* enabled background-image => 1/2 fps o_O */
+            /*background-image: repeating-radial-gradient(center center, rgba(0, 0, 0, .2), rgba(0, 0, 0, .2) 1px, transparent 1px, transparent 100%);*/
+            /*background-size: 5px 5px;*/
+            bottom: 0;
+            content: "";
+            font-family: sans-serif;
+            left: 0;
+            line-height: 500px;
+            opacity: 0;
+            position: absolute;
+            right: 0;
+            text-align: center;
+            top: 0;
+            transition: opacity .2s ease-out;
+            z-index: 1;
         }
+        .experiment--adaptive-seeking .experiment__stage--loader-on:after {
+            animation: rotate 2s linear infinite;
+            border: solid;
+            border-top-color: rgba(0, 0, 0, .9);
+            border-top-width: .5em;
+            border-right-color: rgba(0, 0, 0, .6);
+            border-right-width: .5em;
+            border-bottom-color: rgba(0, 0, 0, .35);
+            border-bottom-width: .5em;
+            border-left-color: rgba(0, 0, 0, .2);
+            border-left-width: .5em;
+            border-radius: 50%;
+            content: "";
+            display: block;
+            height: 4em;
+            opacity: 0;
+            left: 50%;
+            position: absolute;
+            top: 50%;
+            transition: opacity .2s ease-out;
+            transform: translateX( -50% ) translateY( -50% );
+            width: 4em;
+            z-index: 2;
+        }
+        .experiment--adaptive-seeking .experiment__stage--loader-on.is-seeking:before,
+        .experiment--adaptive-seeking .experiment__stage--loader-on.is-seeking:after {
+            opacity: 1;
+        }
+
+    /*.experiment--adaptive-seeking .ui-container--seeking-speed,
+    .experiment--adaptive-seeking .ui-container--seeking-fps {
+        border-left: 1px solid #000;
+        display: inline-block;
+        margin-left: .5em;
+        padding-left: .5em;
+    }*/
+
+@keyframes rotate {
+    from {
+        transform: translateX( -50% ) translateY( -50% ) rotate( 0deg );
+    }
+    to {
+        transform: translateX( -50% ) translateY( -50% ) rotate( 360deg );
+    }
+}
