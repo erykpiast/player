@@ -124,8 +124,8 @@ module.exports = (function() {
                     return ((1000 * 1000) / (this._isSeeking ? this._previousAverageFrameDuration : this._averageFrameDuration));
                 }
             }),
-            lastFrameTime: this._createGetter({
-                publicName: 'lastFrameTime',
+            lastKeyframeTime: this._createGetter({
+                publicName: 'lastKeyframeTime',
                 get: function() {
                     return this._keyframes[this._keyframes.length - 1][this._timeKey];
                 }
@@ -247,6 +247,10 @@ module.exports = (function() {
             // it seems like sometimes frame is requested but isPlaying flag is not set
             if(this._state !== this.states.STOPPED) {
                 this._state = this.states.STOPPED;
+
+                if(this._isSeeking) {
+                    this._finishSeeking();
+                }
 
                 cancelAnimationFrame(this._requestedFrame);
                 this._requestedFrame = null;
@@ -530,7 +534,7 @@ module.exports = (function() {
 
             this._speed = this.speed;
 
-            this.emit('seeked');
+            this.emit('seeked', this._currentRecordingTime);
             this.emit('timeupdate', this._currentRecordingTime);
         },
         _startPlayingIfPaused: function() {
@@ -551,16 +555,12 @@ module.exports = (function() {
             return {
                 get: function() {
                     if('function' === typeof setVal) {
-                        return setVal.call(this);
+                        return setVal(this);
                     } else {
                         return setVal;
                     }
                 },
                 set: function(value) {
-                    if(this._isSeeking && (conf.publicName !== '_speed')) {
-                        throw new Error('you can not set new speed during seeking, sorry');
-                    }
-
                     if(('function' === typeof value) && (conf.publicName !== 'speed')) {
                         if(value !== setVal) {
                             this[conf.privateName] = setVal = value;
@@ -575,8 +575,6 @@ module.exports = (function() {
                                 if(conf.publicName === 'speed') {
                                     this.emit('ratechange', setVal);
                                 }
-
-                                return parsed;
                             }
                         } else {
                             if(conf.publicName === 'speed') {
@@ -586,6 +584,12 @@ module.exports = (function() {
                             }
                         }
                     }
+
+                    if((conf.publicName === 'seekingSpeed') && this._isSeeking) {
+                        this._speed = setVal;
+                    }
+
+                    return setVal;
                 }
             };
         },
@@ -599,7 +603,9 @@ module.exports = (function() {
                     return this[conf.privateName];
                 },
                 set: function(value) {
-                    if(enumValues.indexOf(value) !== -1) {
+                    if((conf.publicName === 'seekingMode') && this._isSeeking) {
+                        throw new Error('you can not change seeking mode during seeking');
+                    } else if(enumValues.indexOf(value) !== -1) {
                         this[conf.privateName] = value;
 
                         return value;
@@ -624,7 +630,7 @@ module.exports = (function() {
 
     Player.prototype.abort = Player.prototype.stop;
     Player.prototype.fastSeek = Player.prototype.seek;
-    Player.prototype.dispoase = Player.prototype.destroy;
+    Player.prototype.dispose = Player.prototype.destroy;
 
 
     return Player;

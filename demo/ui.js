@@ -51,7 +51,7 @@ module.exports = (function() {
                 this.set('currentSpeed', player.speed);
             },
             seek: lodash.debounce(function(e) {
-                player.seek(Math.round(parseFloat(e.node.value, 10) * player.lastFrameTime));
+                player.seek(Math.round(parseFloat(e.node.value, 10) * player.lastKeyframeTime));
             }, options.timelineDebounceTime)
         });
 
@@ -65,7 +65,7 @@ module.exports = (function() {
             .on('abort', updatePlayingStatus)
             .on('ended', updatePlayingStatus)
             .on('timeupdate', function(currentRecordingTime) {
-                this.view.set('progress', currentRecordingTime / player.lastFrameTime);
+                this.view.set('progress', currentRecordingTime / player.lastKeyframeTime);
                 this.view.set('fps', player.fps);
             }.bind(this));
     }

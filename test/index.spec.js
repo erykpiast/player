@@ -58,10 +58,13 @@ describe('Player instance test', function() {
     beforeEach(function() {
         requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
 
-        player = new Player([ { time: 0 }], function() { });
+        player = new Player([{
+            time: 0
+        }], function() { });
     });
 
     afterEach(function() {
+        player.destroy();
         player = null;
     });
 
@@ -78,11 +81,588 @@ describe('Player instance test', function() {
         expect(player.stop).toBeDefined();
         expect(typeof player.stop).toBe('function');
 
+        expect(player.abort).toBeDefined();
+        expect(typeof player.abort).toBe('function');
+        expect(player.abort).toBe(player.stop);
+
         expect(player.seek).toBeDefined();
         expect(typeof player.seek).toBe('function');
 
+        expect(player.fastSeek).toBeDefined();
+        expect(typeof player.fastSeek).toBe('function');
+        expect(player.fastSeek).toBe(player.seek);
+
         expect(player.destroy).toBeDefined();
         expect(typeof player.destroy).toBe('function');
+
+        expect(player.dispose).toBeDefined();
+        expect(typeof player.dispose).toBe('function');
+        expect(player.dispose).toBe(player.destroy);
+    });
+
+
+    describe('Getters and setters', function() {
+
+        describe('speeds', function() {
+            var drawingFn;
+
+            beforeEach(function() {
+                drawingFn = jasmine.createSpy('drawingFn');
+
+                player.destroy();
+                player = new Player([{
+                    time: 0
+                }, {
+                    time: 20
+                }, {
+                    time: 40
+                }, {
+                    time: 60
+                }, {
+                    time: 80
+                }, {
+                    time: 100
+                }, {
+                    time: 120
+                }], drawingFn, {
+                    speed: 2,
+                    seekingSpeed: 20,
+                    seekingMode: Player.seeking.PLAY_FRAMES
+                });
+            });
+
+            afterEach(function() {
+                drawingFn = null;
+            });
+
+
+            it('Should allow to set speeds by configuration object passed to constructor', function() {
+                expect(player.speed).toEqual(2);
+                expect(player.seekingSpeed).toEqual(20);
+            });
+
+            it('Should allow to get and set current playing speed', function() {
+                player.speed = 10;
+
+                expect(player.speed).toEqual(10);
+            });
+
+            it('Should allow to get and set seeking speed', function() {
+                player.seekingSpeed = 100;
+
+                expect(player.seekingSpeed).toEqual(100);
+            });
+
+            it('Should allow to get and set playing and seeking speed without breaking each other', function() {
+                player.speed = 10;
+                player.seekingSpeed = 100;
+                player.speed = 20;
+
+                expect(player.speed).toEqual(20);
+                expect(player.seekingSpeed).toEqual(100);
+            });
+
+            it('Should allow to set new speed during playing', function() {
+                player.speed = 1;
+                player.play();
+
+                // initial frame
+                requestAnimationFrameMock.trigger(1000);
+
+                // first frame
+                requestAnimationFrameMock.trigger(1020);
+                expect(drawingFn.calls.count()).toBe(1);
+                expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+
+                expect(function() {
+                    player.speed = 2;
+                }).not.toThrow();
+
+                // next key frames
+                requestAnimationFrameMock.trigger(1040);
+                expect(drawingFn.calls.count()).toBe(2);
+                expect(drawingFn.calls.argsFor(1)[0].length).toBe(2);
+            });
+
+            it('Should allow to set new seeking speed during seeking', function() {
+                player.seekingSpeed = 1;
+                player.seek(100);
+
+                // initial frame
+                requestAnimationFrameMock.trigger(1000);
+
+                // first frame
+                requestAnimationFrameMock.trigger(1020);
+                expect(drawingFn.calls.count()).toBe(1);
+                expect(drawingFn.calls.argsFor(0)[0].length).toBe(1);
+
+                expect(function() {
+                    player.seekingSpeed = function() {
+                        return 2;
+                    };
+                }).not.toThrow();
+
+                // next key frames
+                requestAnimationFrameMock.trigger(1040);
+                expect(drawingFn.calls.count()).toBe(2);
+                expect(drawingFn.calls.argsFor(1)[0].length).toBe(2);
+
+                expect(function() {
+                    player.seekingSpeed = 3;
+                }).not.toThrow();
+
+                // next key frames
+                requestAnimationFrameMock.trigger(1060);
+                expect(drawingFn.calls.count()).toBe(3);
+                expect(drawingFn.calls.argsFor(2)[0].length).toBe(3);
+            });
+
+
+            describe('error handling', function() {
+
+                it('Should throw if speed is not a positive, finite number', function() {
+
+                    expect(function() {
+                        player.speed = 2;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.speed = 0.0000001;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.speed = 50.312;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.speed = 0;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = -1;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = Infinity;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = undefined;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = null;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = '0b01';
+                    }).toThrow();
+
+                    expect(function() {
+                        player.speed = function() { return 1; };
+                    }).toThrow();
+
+                });
+
+                it('Should throw if seekingSpeed is not a positive, finite number or function', function() {
+
+                    expect(function() {
+                        player.seekingSpeed = 2;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = 0.0000001;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = 50.312;
+                    }).not.toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = function() { return 1; };
+                    }).not.toThrow();
+                    
+                    expect(function() {
+                        player.seekingSpeed = 0;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = -1;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = Infinity;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = undefined;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = null;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingSpeed = '0b01';
+                    }).toThrow();
+
+                });
+
+            });
+
+        });
+
+        describe('seeking mode', function() {
+            var drawingFn;
+
+            beforeEach(function() {
+                drawingFn = jasmine.createSpy('drawingFn');
+
+                player.destroy();
+                player = new Player([{
+                    time: 0
+                }, {
+                    time: 20
+                }, {
+                    time: 40
+                }, {
+                    time: 60
+                }, {
+                    time: 80
+                }, {
+                    time: 100
+                }, {
+                    time: 120
+                }], drawingFn, {
+                    seekingMode: Player.seeking.PLAY_FRAMES
+                });
+            });
+
+            afterEach(function() {
+                drawingFn = null;
+            });
+
+
+            it('Should allow to set seeking mode by configuration object passed to constructor', function() {
+                expect(player.seekingMode).toBe(Player.seeking.PLAY_FRAMES);
+            });
+
+            it('Should allow to set seeking mode by property', function() {
+                player.seekingMode = Player.seeking.OMIT_FRAMES;
+
+                expect(player.seekingMode).toBe(Player.seeking.OMIT_FRAMES);
+            });
+
+            it('Should allow to set seeking mode to values from seeking enum', function() {
+                expect(function() {
+                    player.seekingMode = Player.seeking.OMIT_FRAMES;
+                }).not.toThrow();
+                expect(player.seekingMode).toBe(Player.seeking.OMIT_FRAMES);
+                
+                expect(function() {
+                    player.seekingMode = Player.seeking.PLAY_FRAMES;
+                }).not.toThrow();
+                expect(player.seekingMode).toBe(Player.seeking.PLAY_FRAMES);
+            });
+
+            describe('error handling', function() {
+
+                it('Should throw if trying to change seeking mode to value beyond the seeking enum', function() {
+                    expect(function() {
+                        player.seekingMode = Player.seeking.XXX_MODE;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingMode = 30;
+                    }).toThrow();
+
+                    expect(function() {
+                        player.seekingMode = 'f4nCy M0d3';
+                    }).toThrow();
+                });
+
+                it('Should throw if trying to change seeking mode during seeking', function() {
+                    player.seekingSpeed = 1;
+                    player.seek(100);
+
+                    requestAnimationFrameMock.trigger(1000);
+                    requestAnimationFrameMock.trigger(1020);
+
+                    expect(function() {
+                        player.seekingMode = Player.seeking.OMIT_FRAMES;
+                    }).toThrow();
+                });
+
+            });
+
+        });
+
+        describe('getters', function() {
+
+            it('Should set a bunch of getters', function() {
+                expect(player.hasOwnProperty('direction')).toBeTruthy();
+                expect(player.hasOwnProperty('state')).toBeTruthy();
+                expect(player.hasOwnProperty('isPlaying')).toBeTruthy();
+                expect(player.hasOwnProperty('isPaused')).toBeTruthy();
+                expect(player.hasOwnProperty('isStopped')).toBeTruthy();
+                expect(player.hasOwnProperty('isSeeking')).toBeTruthy();
+                expect(player.hasOwnProperty('fps')).toBeTruthy();
+                expect(player.hasOwnProperty('lastKeyframeTime')).toBeTruthy();
+            });
+
+            it('Should throw if trying set a value of getter property', function() {
+                expect(function() {
+                    player.direction = Player.directions.BACKWARD;
+                }).toThrow();
+
+                expect(function() {
+                    player.state = Player.states.PAUSED;
+                }).toThrow();
+
+                expect(function() {
+                    player.state = Player.states.PAUSED;
+                }).toThrow();
+
+                expect(function() {
+                    player.isPlaying = true;
+                }).toThrow();
+
+                expect(function() {
+                    player.isPaused = false;
+                }).toThrow();
+
+                expect(function() {
+                    player.isStopped = true;
+                }).toThrow();
+
+                expect(function() {
+                    player.isSeeking = false;
+                }).toThrow();
+
+                expect(function() {
+                    player.fps = 45.12;
+                }).toThrow();
+
+                expect(function() {
+                    player.lastKeyframeTime = 100123;
+                }).toThrow();
+            });
+
+
+            describe('direction', function() {
+
+                it('Should allow to set direction mode to value from direction enum', function() {
+                    expect(function() {
+                        player.play(undefined, Player.directions.BACKWARD);
+                    }).not.toThrow();
+                    expect(player.direction).toBe(Player.directions.BACKWARD);
+                    
+                    expect(function() {
+                        player.play(undefined, Player.directions.FORWARD);
+                    }).not.toThrow();
+                    expect(player.direction).toBe(Player.directions.FORWARD);
+                });
+
+                describe('error handling', function() {
+
+                    it('Should throw if trying to change direction mode to value beyond the direction enum', function() {
+                        expect(function() {
+                            player.play(undefined, null);
+                        }).toThrow();
+
+                        expect(function() {
+                            player.play(undefined, 30);
+                        }).toThrow();
+
+                        expect(function() {
+                            player.play(undefined, 'to the Sun!');
+                        }).toThrow();
+                    });
+
+                });
+
+            });
+
+            
+            describe('states', function() {
+
+                it('Should have state STOPPED and isStopped true initially', function() {
+                    expect(player.state).toBe(Player.states.STOPPED);
+                    expect(player.isStopped).toBeTruthy();
+
+                    expect(player.state).not.toBe(Player.states.PLAYING);
+                    expect(player.isPlaying).toBeFalsy();
+
+                    expect(player.state).not.toBe(Player.states.PAUSED);
+                    expect(player.isPaused).toBeFalsy();
+
+                    expect(player.isSeeking).toBeFalsy();
+                });
+
+                it('Should set state to PLAYING and isPlaying to true after calling method play', function() {
+                    expect(player.state).not.toBe(Player.states.PLAYING);
+                    expect(player.isPlaying).toBeFalsy();
+
+                    player.play();
+
+                    expect(player.state).toBe(Player.states.PLAYING);
+                    expect(player.isPlaying).toBeTruthy();
+                });
+
+                it('Should set state to PAUSED and isPaused to true after calling method pause after play', function() {
+                    player.play();
+
+                    expect(player.state).not.toBe(Player.states.PAUSED);
+                    expect(player.isPaused).toBeFalsy();
+
+                    player.pause();
+
+                    expect(player.state).toBe(Player.states.PAUSED);
+                    expect(player.isPaused).toBeTruthy();
+                });
+
+                it('Should set state to STOPPED and isStopped to true after calling method stop after play', function() {
+                    player.play();
+
+                    expect(player.state).not.toBe(Player.states.STOPPED);
+                    expect(player.isStopped).toBeFalsy();
+
+                    player.stop();
+
+                    expect(player.state).toBe(Player.states.STOPPED);
+                    expect(player.isStopped).toBeTruthy();
+                });
+
+                it('Should set state to STOPPED and isStopped to true after calling method stop after pause', function() {
+                    player.play();
+                    player.pause();
+
+                    expect(player.state).not.toBe(Player.states.STOPPED);
+                    expect(player.isStopped).toBeFalsy();
+
+                    player.stop();
+
+                    expect(player.state).toBe(Player.states.STOPPED);
+                    expect(player.isStopped).toBeTruthy();
+                });
+
+
+                describe('isSeeking', function() {
+
+                    beforeEach(function() {
+                        player.destroy();
+                        player = new Player([{
+                            time: 0
+                        }, {
+                            time: 100
+                        }, {
+                            time: 120
+                        }], function() { });
+                    });
+
+                    it('Should set isSeeking to true after calling seek method', function() {
+                        expect(player.isSeeking).toBeFalsy();
+
+                        player.seek(100);
+
+                        expect(player.isSeeking).toBeTruthy();
+                    });
+
+                    it('Should set isSeeking to false after finish seeking', function() {
+                        player.seek(100);
+
+                        // initial frame
+                        requestAnimationFrameMock.trigger(1000);
+                        // keyframes
+                        requestAnimationFrameMock.trigger(1020);
+
+                        expect(player.isSeeking).toBeFalsy();
+                    });
+
+
+                    describe('coexistence with different states in PLAY_FRAMES mode', function() {
+
+                        beforeEach(function() {
+                            player.seekingMode = Player.seeking.PLAY_FRAMES;
+                        });
+
+
+                        it('Should be true if seek method was called during playing and keep playing state after seeking ends', function() {
+                            player.play();
+
+                            expect(player.state).toBe(Player.states.PLAYING);
+
+                            requestAnimationFrameMock.trigger(1000);
+                            requestAnimationFrameMock.trigger(1020);
+
+                            player.seek(100);
+
+                            expect(player.isSeeking).toBeTruthy();
+                            expect(player.state).toBe(Player.states.PLAYING);
+
+                            requestAnimationFrameMock.trigger(1040);
+
+                            expect(player.isSeeking).toBeFalsy();
+                            expect(player.state).toBe(Player.states.PLAYING);
+                        });
+
+                        it('Should be true if seek method was called when not playing and keep paused state after seeking end', function() {
+                            expect(player.state).toBe(Player.states.STOPPED);
+
+                            player.seek(100);
+
+                            expect(player.isSeeking).toBeTruthy();
+                            expect(player.state).toBe(Player.states.PAUSED);
+
+                            requestAnimationFrameMock.trigger(1000);
+                            requestAnimationFrameMock.trigger(1020);
+
+                            expect(player.isSeeking).toBeFalsy();
+                            expect(player.state).toBe(Player.states.PAUSED);
+
+                            player.play();
+
+                            expect(player.state).toBe(Player.states.PLAYING);
+
+                            requestAnimationFrameMock.trigger(1040);
+                            requestAnimationFrameMock.trigger(1060);
+
+                            player.pause();
+
+                            expect(player.state).toBe(Player.states.PAUSED);
+
+                            player.seek(20);
+
+                            requestAnimationFrameMock.trigger(1080);
+                            requestAnimationFrameMock.trigger(1100);
+
+                            expect(player.isSeeking).toBeFalsy();
+                            expect(player.state).toBe(Player.states.PAUSED);
+                        });
+
+                        it('Should be false if recording was stopped', function() {
+                            player.seek(100);
+
+                            expect(player.isSeeking).toBeTruthy();
+                            expect(player.state).toBe(Player.states.PAUSED);
+
+                            requestAnimationFrameMock.trigger(1000);
+                            requestAnimationFrameMock.trigger(1020);
+
+                            player.stop();
+
+                            expect(player.state).toBe(Player.states.STOPPED);
+                            expect(player.isSeeking).toBeFalsy();
+                        });
+
+                    });
+
+                });
+
+            });
+            
+        });
+
     });
 
 });
@@ -2005,6 +2585,136 @@ describe('Player integration test', function() {
         setTimeout(function() {
             player.stop();
         }, 20);
+    });
+
+});
+
+
+describe('Player seekingSpeed as a function', function() {
+    var frameTime;
+    var player;
+    var drawingFn;
+    var seekingSpeedFn;
+    var seekingSpeed;
+    var keyframes;
+
+    beforeEach(function() {
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        frameTime = 20;
+        drawingFn = jasmine.createSpy('drawingFn');
+        seekingSpeed = 100;
+        seekingSpeedFn = jasmine.createSpy('seekingSpeedFn').and.callFake(function() {
+            return seekingSpeed;
+        });
+        keyframes = _createFrames(100, frameTime);
+    });
+
+    afterEach(function() {
+        player.destroy();
+        requestAnimationFrameMock.setMode(requestAnimationFrameMock.modes.MANUAL);
+
+        player = null;
+        drawingFn = null;
+        playingStart = null;
+        seekingSpeedFn = null;
+        seekingSpeed = null;
+        frameTime = null;
+        keyframes = null;
+    });
+
+
+    function _createFrames(count, difference) {
+        var frames = [];
+
+        for(var i = 0; i < count; i++) {
+            frames[i] = {
+                index: i,
+                time: frames[i - 1] ? frames[i - 1].time + difference : 0
+            };
+        }
+
+        return frames.map(function(frame) {
+            frame.time = Math.round(frame.time);
+
+            return frame;
+        });
+    }
+
+
+    it('Should call seeking speed function with player instance as argument', function() {
+        player = new Player(keyframes, drawingFn, {
+            seekingMode: Player.seeking.PLAY_FRAMES,
+            seekingSpeed: seekingSpeedFn
+        });
+
+        player.seek(keyframes[keyframes.length - 1].time);
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+        expect(seekingSpeedFn.calls.count()).toBe(1);
+        expect(seekingSpeedFn.calls.argsFor(0)[0]).toBe(player);
+    });
+
+
+    it('Should seek with constant speed', function() {
+        seekingSpeed = 10;
+        
+        player = new Player(keyframes, drawingFn, {
+            seekingMode: Player.seeking.PLAY_FRAMES,
+            seekingSpeed: seekingSpeedFn
+        });
+
+        player.seek(keyframes[keyframes.length - 1].time);
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+
+        // first set of keyframes
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(10);
+
+        // second set
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(10);
+
+        // the third
+        requestAnimationFrameMock.trigger(1000 + (3 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(10);
+    });
+
+
+    it('Should seek with variable speed', function() {
+        player = new Player(keyframes, drawingFn, {
+            seekingMode: Player.seeking.PLAY_FRAMES,
+            seekingSpeed: seekingSpeedFn
+        });
+
+        player.seek(keyframes[keyframes.length - 1].time);
+
+        // initial frame
+        requestAnimationFrameMock.trigger(1000);
+
+        // first set of keyframes
+        seekingSpeed = 10;
+        requestAnimationFrameMock.trigger(1000 + (1 * frameTime));
+        expect(drawingFn.calls.count()).toBe(1);
+        expect(drawingFn.calls.argsFor(0)[0].length).toBe(10);
+
+        // second set
+        seekingSpeed = 5;
+        requestAnimationFrameMock.trigger(1000 + (2 * frameTime));
+        expect(drawingFn.calls.count()).toBe(2);
+        expect(drawingFn.calls.argsFor(1)[0].length).toBe(5);
+
+        // the third
+        seekingSpeed = 20;
+        requestAnimationFrameMock.trigger(1000 + (3 * frameTime));
+        expect(drawingFn.calls.count()).toBe(3);
+        expect(drawingFn.calls.argsFor(2)[0].length).toBe(20);
     });
 
 });
