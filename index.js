@@ -124,6 +124,12 @@ module.exports = (function() {
                     return ((1000 * 1000) / (this._isSeeking ? this._previousAverageFrameDuration : this._averageFrameDuration));
                 }
             }),
+            currentFps: this._createGetter({
+                publicName: 'currentFps',
+                get: function() {
+                    return ((1000 * 1000) / this._averageFrameDuration);
+                }
+            }),
             lastKeyframeTime: this._createGetter({
                 publicName: 'lastKeyframeTime',
                 get: function() {

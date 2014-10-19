@@ -353,9 +353,9 @@ module.exports = (function() {
         },
         _adaptiveSeeking: function() {
             var self = this;
-            this._currentSeekingSpeed = 128;
-            this._seekingSpeeds = [ ];
-            this._seekingFps = [ ];
+            self._currentSeekingSpeed = 128;
+            self._seekingSpeeds = [ ];
+            self._seekingFps = [ ];
 
 
             function _increase(speed) {
@@ -366,10 +366,8 @@ module.exports = (function() {
                 return (speed / (1 + (self.conf.speedChangeStep / 100)));
             }
 
-            return function() {
-                var currentFps = (1000 * 1000 / this._averageFrameDuration);
-
-                if(currentFps < self.conf.minFps) {
+            return function(player) {
+                if(player.currentFps < self.conf.minFps) {
                     self._currentSeekingSpeed = _decrease(self._currentSeekingSpeed);
                 } else {
                     self._currentSeekingSpeed = _increase(self._currentSeekingSpeed);
