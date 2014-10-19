@@ -1,6 +1,6 @@
 {
   "name": "player",
-  "version": "0.1.3",
+  "version": "0.2.1",
   "description": "Experimental player.",
   "main": "index.js",
   "scripts": {
