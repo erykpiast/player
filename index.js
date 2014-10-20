@@ -174,15 +174,13 @@ module.exports = (function() {
             this.stop();
             this.removeAllListeners();
 
-            delete this._keyframes;
-            delete this._drawer;
-            delete this._lastFramesDuration;
-
             if(this._requestedFrame) {
                 cancelAnimationFrame(this._requestedFrame);
-
-                delete this._requestedFrame;
             }
+
+            Object.keys(this).forEach(function(key) {
+                delete this[key];
+            }, this);
 
             this._isDestroyed = true;
         },
