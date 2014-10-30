@@ -396,7 +396,11 @@ module.exports = (function() {
                 var nextKeyframe = this._getNextKeyframe(endKeyframeTime, toForward);
                 this._currentRecordingTime = this._toMs(endKeyframeTime);
 
-                this._drawer(keyframes, nextKeyframe, this._currentRecordingTime, this._toMs(currentTime));
+                try {
+                    this._drawer(keyframes, nextKeyframe, this._currentRecordingTime, this._toMs(currentTime));
+                } catch(err) {
+                    this.emit('error', err);
+                }
 
                 this._nextFrameDesiredTime = currentTime + frameDuration;
                 this._lastFrameTime = currentTime;
