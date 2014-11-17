@@ -6,13 +6,7 @@ module.exports = (function() {
     var EventEmitter = require('events').EventEmitter;
     var util = require('util');
 
-
-
-// TODO - more documentation and comments 
-//  - documentation of all public methods, getters/setters, signals
-
-
-
+    
     /** 
      * @constructor Player - creates new instance of player for given recording
      * @param {array} keyframes - an array of objects representing keyframes of recording
@@ -32,6 +26,7 @@ module.exports = (function() {
      * @fires Player#abort - when recording state is PLAYING or PAUSED and stop method is called
      * @fires Player#seeking - when seeking is started
      * @fires Player#seeked - when seeking is finished
+     * @fires Player#ratechange - when speed is changed
      */
     function Player(keyframes, drawer, options) {
         if(!keyframes || !Array.isArray(keyframes) || !keyframes.length) {
@@ -144,67 +139,128 @@ module.exports = (function() {
 
         // public properties (with getters and/or setters)
         Object.defineProperties(this, {
+            /**
+             * @property {number,function} this._speed - current speed of playing (or seeking in PLAY_FRAMES mode)
+             * @access protected
+             */
             _speed: this._createSpeedProperty({
                 privateName: '_speed',
                 publicName: '_speed'
             }),
+            /**
+             * @property {number} this.speed - current speed of playing
+             * @access public
+             */
             speed: this._createSpeedProperty({
                 privateName: '_speed',
                 publicName: 'speed'
             }),
+            /**
+             * @property {number} this.seekingSpeed - current speed of seeking
+             * @access public
+             */
             seekingSpeed: this._createSpeedProperty({
                 privateName: '_seekingSpeed',
                 publicName: 'seekingSpeed'
             }),
+            /**
+             * @property {number,enum} this.seekingMode - current mode of seeking
+             * @access public
+             */
             seekingMode: this._createSettingProperty({
                 publicName: 'seekingMode',
                 privateName: '_seekingMode',
                 enumName: 'seeking'
             }),
+            /**
+             * @property {number,enum} this.direction - current direction of playing
+             * @access public
+             * @readonly
+             */
             direction: this._createGetter({
                 publicName: 'direction',
                 privateName: '_direction'
             }),
+            /**
+             * @property {number,enum} this.state - current state of player
+             * @access public
+             * @readonly
+             */
             state: this._createGetter({
                 publicName: 'state',
                 privateName: '_state'
             }),
+            /**
+             * @property {boolean} this.isStopped - true if current state of player is STOPPED
+             * @access public
+             * @readonly
+             */
             isStopped: this._createGetter({
                 publicName: 'isStopped',
                 get: function() {
                     return (this._state === this.states.STOPPED);
                 }
             }),
+            /**
+             * @property {boolean} this.isPlaying - true if current state of player is PLAYING
+             * @access public
+             * @readonly
+             */
             isPlaying: this._createGetter({
                 publicName: 'isPlaying',
                 get: function() {
                     return (this._state === this.states.PLAYING);
                 }
             }),
+            /**
+             * @property {boolean} this.isPaused - true if current state of player is PAUSED
+             * @access public
+             * @readonly
+             */
             isPaused: this._createGetter({
                 publicName: 'isPaused',
                 get: function() {
                     return (this._state === this.states.PAUSED);
                 }
             }),
+            /**
+             * @property {boolean} this.isSeeking - true if seeking is happening
+             * @access public
+             * @readonly
+             */
             isSeeking: this._createGetter({
                 publicName: 'isSeeking',
                 get: function() {
                     return this._isSeeking;
                 }
             }),
+            /**
+             * @property {number} this.fps - current average frames per second, NOT UPDATED when seeking in PLAY_FRAMES mode
+             * @access public
+             * @readonly
+             */
             fps: this._createGetter({
                 publicName: 'fps',
                 get: function() {
                     return ((1000 * 1000) / (this._isSeeking ? this._previousAverageFrameDuration : this._averageFrameDuration));
                 }
             }),
+            /**
+             * @property {number} this.fps - current average frames per second
+             * @access public
+             * @readonly
+             */
             currentFps: this._createGetter({
                 publicName: 'currentFps',
                 get: function() {
                     return ((1000 * 1000) / this._averageFrameDuration);
                 }
             }),
+            /**
+             * @property {number,milliseconds} this.lastKeyframeTime - timeKey property of last keyframe on keyframes list
+             * @access public
+             * @readonly
+             */
             lastKeyframeTime: this._createGetter({
                 publicName: 'lastKeyframeTime',
                 get: function() {
@@ -226,21 +282,26 @@ module.exports = (function() {
     extend(Player, {
         /*
          * @enum seeking - available modes of seeking
-         * @property {object} seeking.PLAY_FRAMES - indicates seeking with playing all frames between current and desired time
-         * @property {object} seeking.OMIT_FRAMES - indicates seeking without playing frames between current and desired time
+         * @property {number} seeking.PLAY_FRAMES - indicates seeking with playing all frames between current and desired time
+         * @property {number} seeking.OMIT_FRAMES - indicates seeking without playing frames between current and desired time
          */
         seeking: {
             PLAY_FRAMES: 1,
             OMIT_FRAMES: 2
         },
         /* @enum directions - possible directions of playing
-         * @property {object} directions.FORWARD - indicates playing from the first to the last frame
-         * @property {object} directions.BACKWARD - indicates playing from the last to the first frame
+         * @property {number} directions.FORWARD - indicates playing from the first to the last frame
+         * @property {number} directions.BACKWARD - indicates playing from the last to the first frame
          */
         directions: {
             FORWARD: 1,
             BACKWARD: 2
         },
+        /* @enum states - possible states of player
+         * @property {number} states.PLAYING - `play` method was called and `pause` nor `stop` were not
+         * @property {number} states.PAUSED - `pause` method was called after `play` method and then `pause` nor `stop` were not
+         * @property {number} states.STOPPED - `stop` method was called and then `pause` nor `call` were not
+         */
         states: {
             STOPPED: 1,
             PLAYING: 2,
