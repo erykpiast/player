@@ -13,15 +13,25 @@ module.exports = (function() {
 
 
 
-    /* @constructor Player - creates new instance of player for given recording
+    /** 
+     * @constructor Player - creates new instance of player for given recording
      * @param {array} keyframes - an array of objects representing keyframes of recording
      * @param {function} drawer - function called on each recording frame
      * @param {object} options  - configuration object
-     *     @property {string} options.timeKey - name of keyframe property containing the time in milliseconds
-     *     @property {number,enum} options.seekingMode - mode of seeking (one of those from Player.seeking)
-     *     @property {number} options.speed - initial speed of playing
-     *     @property {number} options.seekingSpeed - speed of seeking in PLAY_FRAMES mode
-     *     @property {number} options.lastFramesForAverage - number of last frames to taking into account in measuring FPS value
+     *     @property {string} [options.timeKey='time'] - name of keyframe property containing the time in milliseconds
+     *     @property {number,enum} [options.seekingMode=seeking.OMIT_FRAMES]  - mode of seeking (one of those from Player.seeking)
+     *     @property {number} [options.speed=1] - initial speed of playing
+     *     @property {number,enum|function} [options.seekingSpeed=100] - speed of seeking in PLAY_FRAMES mode
+     *         if function, have to return number
+     *     @property {number} [options.lastFramesForAverage=5] - number of last frames to taking into account in measuring FPS value
+     *
+     * @fires Player#play - when the second frame after calling play method is emitted and recording is paused
+     * @fires Player#playing - when the second frame after calling play method is emitted whatever the state of recording is
+     * @fires Player#pause - when current status is PLAYING and pause method is called
+     * @fires Player#waiting - when recording has to be seeked before playing
+     * @fires Player#abort - when recording state is PLAYING or PAUSED and stop method is called
+     * @fires Player#seeking - when seeking is started
+     * @fires Player#seeked - when seeking is finished
      */
     function Player(keyframes, drawer, options) {
         if(!keyframes || !Array.isArray(keyframes) || !keyframes.length) {
@@ -32,6 +42,10 @@ module.exports = (function() {
             throw new Error('drawer must be a function');
         }
 
+        /**
+         * @property {object} this.defaults - default settings 
+         * @access public
+         */
         this.defaults = {
             timeKey: 'time',
             speed: 1,
@@ -41,30 +55,91 @@ module.exports = (function() {
         };
         options = extend({ }, this.defaults, options);
 
+        /**
+         * @property {string} this._timeKey - chosen time key
+         * @access protected
+         */
         this._timeKey = options.timeKey;
+        /**
+         * @property {number} this._lastFramesForAverage - chosen amount of last frames times for calculating average time
+         * @access protected
+         */
         this._lastFramesForAverage = options.lastFramesForAverage;
 
         // sort keyframes descending by time
-        this._keyframes = keyframes.sort(function(a, b) {
+        /**
+         * @property {array} this._keyframes - collection of passed keyframes sorted by this._timeKey
+         * @access protected
+         */
+        this._keyframes = keyframes.slice().sort(function(a, b) {
             return (a[options.timeKey] - b[options.timeKey]);
         });
 
+        /**
+         * @property {function} this._drawer - passed frame handler
+         * @access protected
+         */
         this._drawer = drawer;
 
+        /**
+         * @property {function} this._frame - this.prototype.frame function bound to current instance
+         * @access protected
+         */
         this._frame = this._frame.bind(this);
 
+        /**
+         * @property {number} this._desiredFrameRate
+         * @access protected
+         */
         this._desiredFrameRate = 60;
+        /**
+         * @property {number} this._maxFrameTime - used to define time range to take keyframes for current frame
+         * @access protected
+         */
         this._maxFrameTime = (1000 / this._desiredFrameRate * 2);
+        /**
+         * @property {number} this._lastRecordingTime - recording time set in last frame call
+         * @access protected
+         */
         this._lastRecordingTime = -1;
+        /**
+         * @property {array} this._lastFrameDuration - collection of last frames durations, time of the latest frame is the last
+         * @property {number,milliseconds} this._lastFrameDuration[n] - duration of frame
+         * @access protected
+         */
         this._lastFramesDuration = [ ];
+        /**
+         * @property {number} this._averageFrameDuration
+         * @access protected
+         */
         this._averageFrameDuration = this._toUs(1000 / this._desiredFrameRate);
+        /**
+         * @property {number} this._framesCount - for testing
+         * @access protected
+         */
         this._framesCount = 0;
+        /**
+         * @property {number} this._lastFrameTime - time of last calling of frame handler
+         * @access protected
+         */
         this._lastFrameTime = 0;
 
+        /**
+         * @property {boolean} this._isDestroyed - indicates if instance was destroyed (destroy function was called)
+         * @access protected
+         */
         this._isDestroyed = false;
 
+        /**
+         * @property {number,enum} this._direction - current direction of playing
+         * @access protected
+         */
         this._direction = this.directions.FORWARD;
 
+        /**
+         * @property {number,enum} this._state - current state of instance
+         * @access protected
+         */
         this._state = this.states.STOPPED;
 
         // public properties (with getters and/or setters)
@@ -149,10 +224,19 @@ module.exports = (function() {
     util.inherits(Player, EventEmitter);
 
     extend(Player, {
+        /*
+         * @enum seeking - available modes of seeking
+         * @property {object} seeking.PLAY_FRAMES - indicates seeking with playing all frames between current and desired time
+         * @property {object} seeking.OMIT_FRAMES - indicates seeking without playing frames between current and desired time
+         */
         seeking: {
             PLAY_FRAMES: 1,
             OMIT_FRAMES: 2
         },
+        /* @enum directions - possible directions of playing
+         * @property {object} directions.FORWARD - indicates playing from the first to the last frame
+         * @property {object} directions.BACKWARD - indicates playing from the last to the first frame
+         */
         directions: {
             FORWARD: 1,
             BACKWARD: 2
@@ -168,6 +252,10 @@ module.exports = (function() {
         seeking: Player.seeking,
         directions: Player.directions,
         states: Player.states,
+        /**
+         * @method destroy - destroy all private properties
+         * @access public
+         */
         destroy: function() {
             this._ensureAvailability();
 
@@ -184,13 +272,11 @@ module.exports = (function() {
 
             this._isDestroyed = true;
         },
-        /* @function play - start playing of the recording or resume it when it's paused
+        /**
+         * @method play - start playing of the recording or resume it when it's paused
+         * @access public
          * @param {number} [fromTime=0] - a positive integer, time in milliseconds, starting point of playing
-         * @param {*} [direction=directions.FORWARD] - direction of playing
-         *
-         * @property {object} directions - map of possible directions of playing
-         * @property {object} directions.FORWARD - indicates playing from the first to the last frame
-         * @property {object} directions.BACKWARD - indicates playing from the last to the first frame
+         * @param {string,enum} [direction=directions.FORWARD] - direction of playing
          */
         play: function(fromTime, direction) {
             this._ensureAvailability();
@@ -231,20 +317,33 @@ module.exports = (function() {
                         (fromTime === 0)
                     )
             ) {
+                /**
+                 * @event waiting - when recording has to be seeked before playing
+                 */
                 this.emit('waiting');
 
                 this.seek(fromTime);
             }
         },
+        /** 
+         * @method pause - pause playing in next frame
+         * @access public
+         */
         pause: function() {
             this._ensureAvailability();
 
             if(this._state === this.states.PLAYING) {
                 this._state = this.states.PAUSED;
 
+                /* @event pause - fired when current status is PLAYING and pause method is called
+                 */
                 this.emit('pause');
             }
         },
+        /**
+         * @method stop - stop playing immediately, cancel scheduled frame
+         * @access public
+         */
         stop: function() {
             this._ensureAvailability();
 
@@ -261,19 +360,16 @@ module.exports = (function() {
 
                 this._lastRecordingTime = -1;
 
+                /**
+                 * @event abort - fired when recording state is PLAYING or PAUSED and stop method is called
+                 */
                 this.emit('abort');
             }
         },
-        /* @function seek - Allows to move video to specified time; if video is stopped, it make it paused on specified time
-         * @param {number} toTime - A positive integer, time in milliseconds, desired recording time
-         *
-         * @property {object} seeking - map of available modes of seeking
-         * @property {object} seeking.PLAY_FRAMES - indicates seeking with playing all frames between current and desired time
-         * @property {object} seeking.OMIT_FRAMES - indicates seeking without playing frames between current and desired time
-         *
-         * @property {*} [seekingMode=seeking.OMIT_FRAMES] - current seeking mode
-         * @property {number} [seekingSpeed=100] - indicates speed of playing speed in PLAY_FRAMES mode
-         *
+        /**
+         * @method seek - Allows to move video to specified time; if video is stopped, it make it paused on specified time
+         * @access public
+         * @param {number,milliseconds} toTime - A positive integer, time in milliseconds, desired recording time
          */
         seek: function(toTime) {
             this._ensureAvailability();
@@ -324,8 +420,16 @@ module.exports = (function() {
 
             this._startPlayingIfPaused();
 
+            /**
+             * @event seeking - fired when seeking is started
+             */
             this.emit('seeking');
         },
+        /**
+         * @method frame - frame handler, function passed to requestAnimationFrames
+         * @access protected
+         * @param {number,milliseconds} ct - current time
+         */
         _frame: function(ct) {
             this._requestedFrame = null;
             if((this._state === this.states.PAUSED) && !this._isSeeking) {
@@ -353,8 +457,16 @@ module.exports = (function() {
                 ) {
                     this._playingStartTime = currentTime;
 
+                    /**
+                     * @event playing - fired when the second frame after calling play method is emitted
+                     * @type {number,milliseconds} - current time
+                     */
                     this.emit('playing', this._toMs(currentTime));
 
+                    /**
+                     * @event play - fired when the second frame after calling play method is emitted and recording was paused
+                     * @type {number,milliseconds} - current time
+                     */
                     if(this._state === this.states.PAUSED) {
                         this.emit('play', this._toMs(currentTime));
                     }
@@ -399,6 +511,10 @@ module.exports = (function() {
                 try {
                     this._drawer(keyframes, nextKeyframe, this._currentRecordingTime, this._toMs(currentTime));
                 } catch(err) {
+                    /**
+                     * @event error - fired when error occurred in drawer function
+                     * @type {object,Error}
+                     */
                     this.emit('error', err);
                 }
 
@@ -406,6 +522,10 @@ module.exports = (function() {
                 this._lastFrameTime = currentTime;
 
                 if(!this._isSeeking) {
+                    /**
+                     * @event timeupdate - fired when playing and frame is emitted
+                     * @type {number,milliseconds} - current time of recording
+                     */
                     this.emit('timeupdate', this._currentRecordingTime);
                 }
 
@@ -426,6 +546,9 @@ module.exports = (function() {
                         this._requestedFrame = requestAnimationFrame(this._frame);
                     } else {
                     // or if isPaused flag was set in the meantime, send the signal
+                        /**
+                         * @event pause - fired recording is paused
+                         */
                         this.emit('pause');
                     }
                 } else if(this._isSeeking) {
@@ -445,6 +568,9 @@ module.exports = (function() {
                 // or just send end signal
                     this._state = this.states.STOPPED;
 
+                    /**
+                     * @event ended - fired the last event was passed to drawer function
+                     */
                     this.emit('ended');
                 }
 
@@ -452,6 +578,14 @@ module.exports = (function() {
                 this._lastRecordingTime = endKeyframeTime;
             }
         },
+        /**
+         * @method _getKeyframesForTimeRange - returns collection of events for specified time range
+         * @access protected
+         * @param  {number,microseconds} st - start of the range
+         * @param  {number,microseconds} et - end of the range
+         * @param  {boolean} toForward - true if playing forward
+         * @return {array} - collection of events for specified time range
+         */
         _getKeyframesForTimeRange: function(st, et, toForward) {
             var startTime = this._toMs(st);
             var endTime = this._toMs(et);
@@ -466,6 +600,13 @@ module.exports = (function() {
                 }, this).reverse();
             }
         },
+        /**
+         * @method _getNextKeyframe - returns the closest keyframe after specified time
+         * @access protected
+         * @param  {number,microseconds} t - time
+         * @param  {boolean} toForward - true if playing forward
+         * @return {object} the closest keyframe after specified time
+         */
         _getNextKeyframe: function(t, toForward) {
             var time = this._toMs(t);
             
@@ -485,6 +626,13 @@ module.exports = (function() {
                 return this._keyframes[high];
             }
         },
+        /**
+         * @method  _getAverageFrameDuration - returns average duration of frame calculated from times of last
+         *          X frames (X is lastFramesForAverage value)
+         * @access protected
+         * @param  {number,milliseconds} [lastFrameDuration] - duration of the last frame to add to average
+         * @return {number,milliseconds} average frame duration
+         */
         _getAverageFrameDuration: function(lastFrameDuration) {
             if(lastFrameDuration) {
                 this._lastFramesDuration.push(lastFrameDuration);
@@ -502,6 +650,12 @@ module.exports = (function() {
                 return this._averageFrameDuration;
             }
         },
+        /**
+         * @method  _resetAverageFrameDuration - resets average duration of frame, clears durations of last frames
+         * @access protected
+         * @param  {number,milliseconds} [lastFrameDuration] - duration of the last frame to set
+         * @return {number,milliseconds} average frame duration
+         */
         _resetAverageFrameDuration: function(lastFrameDuration) {
             while(this._lastFramesDuration.length) {
                 this._lastFramesDuration.pop();
@@ -513,15 +667,37 @@ module.exports = (function() {
 
             return lastFrameDuration;
         },
+        /**
+         * @method _adaptToSpeed - adapts time value to current speed
+         * @access protected
+         * @param {number,microseconds} value - value to adapt
+         * @return {number,microseconds} time adapted to current speed
+         */
         _adaptToSpeed: function(value) {
             return Math.round(value * this._speed, 10);
         },
+        /**
+         * @method _toUs - converts milliseconds to microseconds
+         * @access protected
+         * @param  {number,milliseconds} milliseconds - value to convert
+         * @return {number,microseconds} microseconds
+         */
         _toUs: function(milliseconds) {
             return Math.round(milliseconds * 10e2);
         },
+        /**
+         * @method _toMs - converts microseconds to milliseconds
+         * @access protected
+         * @param  {number,microseconds} microseconds - value to convert
+         * @return {number,milliseconds} milliseconds
+         */
         _toMs: function(microseconds) {
             return (Math.round(microseconds) / 10e2);
         },
+        /**
+         * @method _finishSeeking - restoring playing settings after seeking, useful especially in PLAY_FRAMES mode
+         * @access protected
+         */
         _finishSeeking: function() {
             this._isSeeking = false;
 
@@ -542,9 +718,19 @@ module.exports = (function() {
 
             this._speed = this.speed;
 
+            /**
+             * @event seeked - fired when seeking is finished
+             */
             this.emit('seeked', this._currentRecordingTime);
+            /**
+             * @event timeupdate - fired when seeking is finished
+             */
             this.emit('timeupdate', this._currentRecordingTime);
         },
+        /**
+         * @method _startPlayingIfPaused - mixin for schedule frame when recording is stopped or paused
+         * @access protected
+         */
         _startPlayingIfPaused: function() {
             if(!this._requestedFrame) {
                 this._lastFrameTime = 0;
@@ -552,11 +738,25 @@ module.exports = (function() {
                 this._requestedFrame = requestAnimationFrame(this._frame);
             }
         },
+        /**
+         * @method _ensureAvailability - throws error if instance was destroyed
+         * @access protected
+         */
         _ensureAvailability: function() {
             if(this._isDestroyed) {
                 throw new Error('instance was destroyed and it is useless now');
             }
         },
+        /**
+         * @method _createSpeedProperty - helper for creating property for storing speed
+         *         property created with this function returns value of privateName property (value returned by function if it's function)
+         *         and throws error when trying to set value not complying requirements
+         * @access protected
+         * @param  {object} conf - configuration
+         *      @property {string} conf.privateName - name of private (protected) property
+         *      @property {string} conf.publicName - name of public property
+         * @return {object} ECMA5 property descriptor
+         */
         _createSpeedProperty: function(conf) {
             var setVal = this[conf.privateName];
 
@@ -569,6 +769,7 @@ module.exports = (function() {
                     }
                 },
                 set: function(value) {
+                    // speed can be positive integer or function if it's seekingSpeed (or internal _speed)
                     if(('function' === typeof value) && (conf.publicName !== 'speed')) {
                         if(value !== setVal) {
                             this[conf.privateName] = setVal = value;
@@ -601,6 +802,16 @@ module.exports = (function() {
                 }
             };
         },
+        /**
+         * @method _createSettingProperty - helper for creating setters based on enums
+         *         property created with this function returns value of privateName property
+         *         and throws error when trying to set value not present in enum
+         * @access protected
+         * @param  {object} conf - configuration
+         *      @property {string} conf.privateName - name of private (protected) property
+         *      @property {string} conf.publicName - name of public property
+         * @return {object} ECMA5 property descriptor
+         */
         _createSettingProperty: function(conf) {
             var enumValues = Object.keys(this[conf.enumName]).map(function(key) {
                 return this[conf.enumName][key];
@@ -623,6 +834,18 @@ module.exports = (function() {
                 }
             };
         },
+        /**
+         * @method _createGetter - helper for creating getters
+         *         with default config, property created with this function returns value of privateName property
+         *         and throws error when trying to set it
+         * @access protected
+         * @param  {object} conf - configuration
+         *      @property {string} conf.privateName - name of private (protected) property to get
+         *      @property {string} conf.publicName - name of public property 
+         *      @property {function} [conf.get] - custom getter function
+         *      @property {function} [conf.set] - custom setter function
+         * @return {object} ECMA5 property descriptor
+         */
         _createGetter: function(conf) {
             return {
                 get:  (('function' === typeof conf.get) ? conf.get : function() {
