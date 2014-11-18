@@ -7,6 +7,7 @@ var StreamingTweensExperiment = require('./experiments/streaming-tweens');
 var TweenPlaygroundExperiment = require('./experiments/tween-playground');
 var StressTestExperiment = require('./experiments/stress-test');
 var AdaptiveSeekingExperiment = require('./experiments/adaptive-seeking');
+var ProgressiveChessExperiment = require('./experiments/progressive-chess');
 
 var experimentTitleContainer;
 var experimentView;
@@ -37,6 +38,7 @@ $(function() {
     var tweenPlaygroundExperiment = new TweenPlaygroundExperiment(experimentView);
     var stressTestExperiment = new StressTestExperiment(experimentView);
     var adaptiveSeekingExperiment = new AdaptiveSeekingExperiment(experimentView);
+    var progressiveChessExperiment = new ProgressiveChessExperiment(experimentView);
 
     new Director.Router({
         '/progressive-basic': loadExperiment('/progressive-basic', progressiveBasicExperiment),
@@ -44,6 +46,7 @@ $(function() {
         '/streaming-tweens': loadExperiment('/streaming-tweens', streamingTweensExperiment),
         '/tween-playground': loadExperiment('/tween-playground', tweenPlaygroundExperiment),
         '/stress-test': loadExperiment('/stress-test', stressTestExperiment),
-        '/adaptive-seeking': loadExperiment('/adaptive-seeking', adaptiveSeekingExperiment)
+        '/adaptive-seeking': loadExperiment('/adaptive-seeking', adaptiveSeekingExperiment),
+        '/progressive-chess': loadExperiment('/progressive-chess', progressiveChessExperiment)
     }).init();
 });
