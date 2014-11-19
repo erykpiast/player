@@ -9,6 +9,8 @@ module.exports = (function() {
     var Player = require('../../../index');
     var ChessBoard = require('./chess-board');
 
+    var template = fs.readFileSync(__dirname + '/ui.tpl');
+
     var kasparovVsDeepBlue = fs.readFileSync(__dirname + '/br-vs-wagner-1902.pgn');
 
 
@@ -20,16 +22,19 @@ module.exports = (function() {
             height: (this.conf.fieldSize * 8) + 'px'
         });
 
-        this._board = new ChessBoard(kasparovVsDeepBlue.toString(), this.conf.fieldSize);
-
-        this._stage.appendChild(this._board.element);
-
-        console.log(this._board.getMoves());
-
         this._playerOptions = {
             seekingMode: Player.seeking.PLAY_FRAMES,
             seekingSpeed: 1024,
             speed: 1
+        };
+
+        this._board = new ChessBoard(kasparovVsDeepBlue.toString(), this.conf.fieldSize);
+
+        this._uiOptions = {
+            chapters: this._board.getMoves().map(function(move, index, moves) {
+                return (index / moves.length).toFixed(2);
+            }).concat([ 1 ]),
+            partial: template.toString()
         };
     }
 
@@ -41,6 +46,31 @@ module.exports = (function() {
         },
         load: function() {
             Experiment.prototype.load.call(this);
+
+            this._board = new ChessBoard(kasparovVsDeepBlue.toString(), this.conf.fieldSize);
+
+            this._stage.appendChild(this._board.element);
+
+            this._ui.view.set('backward', this._uiOptions.direction === Player.directions.BACKWARD);
+            this._ui.view.observe('backward', function(value) {
+                if(value) {
+                    this._uiOptions.direction = Player.directions.BACKWARD;
+                } else {
+                    this._uiOptions.direction = Player.directions.FORWARD;
+                }
+
+                if(this._player.isPlaying && (this._player.direction !== this._uiOptions.direction)) {
+                    this._player.pause();
+                    this._player.play(undefined, this._uiOptions.direction);
+                }
+            }.bind(this));
+        },
+        unload: function() {
+            Experiment.prototype.unload.call(this);
+
+            if(this._board.element.parentNode) {
+                this._board.element.parentNode.removeChild(this._board.element);
+            }
         },
         _createKeyframes: function() {
             var keyframes = this._board.getMoves().map(function(move, index) {

@@ -27,7 +27,13 @@
             max="1"
             step="0.01"
             on-input="seek"
-            value="{{ progress }}"/>
+            value="{{ progress }}"
+            list="chapters"/>
+        <datalist id="chapters">
+        {{#chapters:i}}
+            <option label="Move {{ i + 1 }}">{{ . }}</option>
+        {{/chapters}}
+        </datalist>
     </div>
 
     {{ >experimentSpecific }}

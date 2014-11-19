@@ -146,6 +146,73 @@ body {
 .experiment--progressive-chess {
 
 }
+
+    .experiment--progressive-chess .experiment__stage {
+        padding: 1.5em;
+    }
+    
+    .experiment--progressive-chess .chess {
+        height: 100%;
+        position: relative;
+        width: 100%;
+    }
+
+    .experiment--progressive-chess .ruler {
+        position: absolute
+    }
+
+    .experiment--progressive-chess ul.ruler {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+    }
+
+    .experiment--progressive-chess .ruler .ruler__item {
+        float: left;
+        font-family: sans-serif;
+        height: 1.5em;
+        text-align: center;
+        width: 1.5em;
+    }
+        .experiment--progressive-chess .ruler .ruler__item,
+        .experiment--progressive-chess .ruler .ruler__item:before {
+            display: inline-block;
+            vertical-align: middle;
+        }
+
+        .experiment--progressive-chess .ruler .ruler__item:before {
+            content: "";
+            height: 100%;
+        }
+
+    .experiment--progressive-chess .ruler--column {
+        left: 0;
+        right: 0;
+    }
+    .experiment--progressive-chess .ruler--column.ruler--top {
+        bottom: 100%;
+    }
+    .experiment--progressive-chess .ruler--column.ruler--bottom {
+        top: 100%;
+    }
+        .experiment--progressive-chess .ruler--column .ruler__item {
+            width: 12.5%;
+        }
+
+    .experiment--progressive-chess .ruler--row {
+        bottom: 0;
+        top: 0;
+    }
+    .experiment--progressive-chess .ruler--row.ruler--left {
+        right: 100%;
+    }
+    .experiment--progressive-chess .ruler--row.ruler--right {
+        left: 100%;
+    }
+        .experiment--progressive-chess .ruler--row .ruler__item {
+            height: 12.5%;
+        }
+
     .experiment--progressive-chess .board {
         background-color: #ffce9e;
         background-image:
