@@ -5,6 +5,8 @@ module.exports = (function() {
     var $ = require('jquery');
 
 
+    // TODO: support promotion, en passant capturing and castling
+
     function ChessBoard(pgn) {
         this._moves = this._parsePgn(pgn);
 

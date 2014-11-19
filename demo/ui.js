@@ -14,7 +14,8 @@ module.exports = (function() {
 
         each({
             direction: player.directions.FORWARD,
-            timelineDebounceTime: 0
+            timelineDebounceTime: 0,
+            chapters: [ ]
         }, function(value, key) {
             if(!options.hasOwnProperty(key)) {
                 options[key] = value;
@@ -31,7 +32,8 @@ module.exports = (function() {
                 progress: 0,
                 currentSpeed: player.speed,
                 playing: player.isPlaying,
-                fps: player.fps
+                fps: player.fps,
+                chapters: options.chapters
             }
         });
 
