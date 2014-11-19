@@ -11,7 +11,7 @@ module.exports = (function() {
 
     var template = fs.readFileSync(__dirname + '/ui.tpl');
 
-    var kasparovVsDeepBlue = fs.readFileSync(__dirname + '/br-vs-wagner-1902.pgn');
+    var gemPgn = fs.readFileSync(__dirname + '/br-vs-wagner-1902.pgn');
 
 
     function ProgressiveChessExperiment() {
@@ -28,7 +28,7 @@ module.exports = (function() {
             speed: 1
         };
 
-        this._board = new ChessBoard(kasparovVsDeepBlue.toString(), this.conf.fieldSize);
+        this._board = new ChessBoard(gemPgn.toString(), this.conf.fieldSize);
 
         this._uiOptions = {
             chapters: this._board.getMoves().map(function(move, index, moves) {
@@ -47,7 +47,7 @@ module.exports = (function() {
         load: function() {
             Experiment.prototype.load.call(this);
 
-            this._board = new ChessBoard(kasparovVsDeepBlue.toString(), this.conf.fieldSize);
+            this._board = new ChessBoard(gemPgn.toString(), this.conf.fieldSize);
 
             this._stage.appendChild(this._board.element);
 
