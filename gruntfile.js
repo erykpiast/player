@@ -1,34 +1,28 @@
 module.exports = function (grunt) {
 
-    grunt.registerTask('default', [ 'dev' ]);
+    grunt.registerTask('default', [ 'demo:dev' ]);
 
-    grunt.registerTask('dev', [
+    grunt.registerTask('publish-pages', [
         'jshint',
         'clean:demo',
         'browserify:demo',
         'autoprefixer:demo',
         'notify:build',
-        'http-server:dev',
-        'watch:demo',
-        'clean:demo'
-    ]);
-
-    grunt.registerTask('demo', [
-        'jshint',
-        'clean:demo',
-        'browserify:demo',
-        'autoprefixer:demo',
-        'notify:build',
-        'http-server:demo',
+        'gh-pages',
         'clean:demo'
     ]);
 
     grunt.registerMultiTask('test', simpleMultiTaskRunner);
+    grunt.registerMultiTask('demo', simpleMultiTaskRunner);
 
 
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
         config: {
+            githubPages: {
+                base: 'demo',
+                files: [ 'index.html', 'demo.bundle.js', 'demo.bundle.css' ]
+            },
             demo: {
                 server: {
                     port: process.env.PORT || 8080,
@@ -89,6 +83,27 @@ module.exports = function (grunt) {
                 'karma:unit',
                 'notify:test',
                 'clean:test'
+            ]
+        },
+        demo: {
+            dev: [
+                'jshint',
+                'clean:demo',
+                'browserify:demo',
+                'autoprefixer:demo',
+                'notify:build',
+                'http-server:dev',
+                'watch:demo',
+                'clean:demo'
+            ],
+            dist: [
+                'jshint',
+                'clean:demo',
+                'browserify:demo',
+                'autoprefixer:demo',
+                'notify:build',
+                'http-server:demo',
+                'clean:demo'
             ]
         },
         browserify: {
@@ -225,6 +240,12 @@ module.exports = function (grunt) {
                     message: 'Enjoy new version of your app!'
                 }
             }
+        },
+        'gh-pages': {
+            options: {
+                base: '<%= config.githubPages.base %>'
+            },
+            src: '<%= config.githubPages.files %>'
         }
     });
 
