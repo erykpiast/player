@@ -47,6 +47,15 @@ module.exports = (function() {
             })()
         };
 
+        this._$container = $('<div>').addClass('chess');
+
+        this._$container.append(this._board.$element);
+
+        this._$container.append(this._createRuler('column', 'top'));
+        this._$container.append(this._createRuler('column', 'bottom'));
+        this._$container.append(this._createRuler('row', 'left'));
+        this._$container.append(this._createRuler('row', 'right'));
+
         [].concat(
             this._figures.white,
             this._figures.black
@@ -58,7 +67,7 @@ module.exports = (function() {
 
         Object.defineProperty(this, 'element', {
             get: function() {
-                return this._board.$element[0];
+                return this._$container[0];
             },
             set: function() {
                 throw new Error('property "element" is readonly');
@@ -116,6 +125,13 @@ module.exports = (function() {
                 throw new Error('no figure on position ' + move.to);
             }
 
+            // remove figure from old position
+            figure.$element.removeClass('figure--column-' + figure.position[0]);
+            figure.$element.removeClass('figure--row-' + figure.position[1]);
+            
+            // do it before eventual restoring captured figure
+            this._board.fields[figure.position] = null;
+
             // find captured figure
             var captured = move.captured && this._figures.captured[move.player][move.captured].pop();
             if(captured) {
@@ -127,12 +143,6 @@ module.exports = (function() {
                 captured.$element.addClass('figure--row-' + captured.position[1]);
                 captured.$element.show();
             }
-
-            // remove figure from old position
-            figure.$element.removeClass('figure--column-' + figure.position[0]);
-            figure.$element.removeClass('figure--row-' + figure.position[1]);
-            
-            this._board.fields[figure.position] = null;
 
             // set new position to figure
             figure.position = move.from;
@@ -151,6 +161,7 @@ module.exports = (function() {
                 var move = moveHistory.shift();
                 
                 parsed.push({
+                    index: parsed.length,
                     figure: this.figuresSymbolToName[move.piece.toUpperCase()],
                     player: (move.color === 'b' ? 'black' : 'white'),
                     from: move.from,
@@ -183,6 +194,28 @@ module.exports = (function() {
                     position: position
                 };
             }, this);
+        },
+        _createRuler: function(dir, align) {
+            var $ruler = $('<ul>')
+                .addClass('ruler')
+                .addClass('ruler--' + dir)
+                .addClass('ruler--' + align);
+
+            var labels = {
+                column: 'abcdefgh',
+                row: '87654321'
+            };
+
+            for(var i = 0; i < 8; i++) {
+                var $item = $('<li>')
+                    .addClass('ruler__item');
+
+                $item.text(labels[dir][i]);
+
+                $ruler.append($item);
+            }
+
+            return $ruler;
         }
     });
 

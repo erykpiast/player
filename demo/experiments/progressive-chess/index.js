@@ -9,6 +9,8 @@ module.exports = (function() {
     var Player = require('../../../index');
     var ChessBoard = require('./chess-board');
 
+    var template = fs.readFileSync(__dirname + '/ui.tpl');
+
     var kasparovVsDeepBlue = fs.readFileSync(__dirname + '/br-vs-wagner-1902.pgn');
 
 
@@ -31,6 +33,10 @@ module.exports = (function() {
             seekingSpeed: 1024,
             speed: 1
         };
+
+        this._uiOptions = {
+            partial: template.toString()
+        };
     }
 
     util.inherits(ProgressiveChessExperiment, Experiment);
@@ -41,6 +47,20 @@ module.exports = (function() {
         },
         load: function() {
             Experiment.prototype.load.call(this);
+
+            this._ui.view.set('backward', this._uiOptions.direction === Player.directions.BACKWARD);
+            this._ui.view.observe('backward', function(value) {
+                if(value) {
+                    this._uiOptions.direction = Player.directions.BACKWARD;
+                } else {
+                    this._uiOptions.direction = Player.directions.FORWARD;
+                }
+
+                if(this._player.isPlaying && (this._player.direction !== this._uiOptions.direction)) {
+                    this._player.pause();
+                    this._player.play(undefined, this._uiOptions.direction);
+                }
+            }.bind(this));
         },
         _createKeyframes: function() {
             var keyframes = this._board.getMoves().map(function(move, index) {
