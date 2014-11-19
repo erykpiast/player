@@ -10,7 +10,25 @@ module.exports = (function() {
 
         this._figures = {
             white: this._createFiguresSet('white'),
-            black: this._createFiguresSet('black')
+            black: this._createFiguresSet('black'),
+            captured: {
+                white: {
+                    king: [],
+                    queen: [],
+                    bishop: [],
+                    rook: [],
+                    knight: [],
+                    pawn: []
+                },
+                black: {
+                    king: [],
+                    queen: [],
+                    bishop: [],
+                    rook: [],
+                    knight: [],
+                    pawn: []
+                }
+            }
         };
 
         this._board = {
@@ -73,10 +91,12 @@ module.exports = (function() {
                 // remove captured figure from board
                 captured.$element.removeClass('figure--column-' + captured.position[0]);
                 captured.$element.removeClass('figure--row-' + captured.position[1]);
-                captured.$element.remove();
+                captured.$element.hide();
 
                 this._board.fields[captured.position] = null;
                 captured.position = null;
+                
+                this._figures.captured[move.player][move.figure].push(captured);
             }
 
             // remove figure from old position
@@ -87,6 +107,37 @@ module.exports = (function() {
             // set new position to figure
             figure.position = move.to;
             this._board.fields[figure.position] = figure;
+            figure.$element.addClass('figure--column-' + figure.position[0]);
+            figure.$element.addClass('figure--row-' + figure.position[1]);
+        },
+        moveBack: function(move) {
+            var figure = this._board.fields[move.to];
+            if(!figure) {
+                throw new Error('no figure on position ' + move.to);
+            }
+
+            // find captured figure
+            var captured = move.captured && this._figures.captured[move.player][move.captured].pop();
+            if(captured) {
+                captured.position = move.to;
+                this._board.fields[captured.position] = captured;
+                
+                // add captured figure to board
+                captured.$element.addClass('figure--column-' + captured.position[0]);
+                captured.$element.addClass('figure--row-' + captured.position[1]);
+                captured.$element.show();
+            }
+
+            // remove figure from old position
+            figure.$element.removeClass('figure--column-' + figure.position[0]);
+            figure.$element.removeClass('figure--row-' + figure.position[1]);
+            
+            this._board.fields[figure.position] = null;
+
+            // set new position to figure
+            figure.position = move.from;
+            this._board.fields[figure.position] = figure;
+            
             figure.$element.addClass('figure--column-' + figure.position[0]);
             figure.$element.addClass('figure--row-' + figure.position[1]);
         },
@@ -103,7 +154,8 @@ module.exports = (function() {
                     figure: this.figuresSymbolToName[move.piece.toUpperCase()],
                     player: (move.color === 'b' ? 'black' : 'white'),
                     from: move.from,
-                    to: move.to
+                    to: move.to,
+                    captured: move.captured && this.figuresSymbolToName[move.captured.toUpperCase()]
                 });
             }
 

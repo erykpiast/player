@@ -9,7 +9,7 @@ module.exports = (function() {
     var Player = require('../../../index');
     var ChessBoard = require('./chess-board');
 
-    var kasparovVsDeepBlue = fs.readFileSync(__dirname + '/kasparov-vs-deep-blue-1996-game-1.pgn');
+    var kasparovVsDeepBlue = fs.readFileSync(__dirname + '/br-vs-wagner-1902.pgn');
 
 
     function ProgressiveChessExperiment() {
@@ -55,15 +55,10 @@ module.exports = (function() {
         _keyframeHandler: function(keyframe) {
             var move;
             if(this._player.direction === this._player.directions.BACKWARD) {
-                move = extend({}, keyframe.move, {
-                    from: keyframe.move.to,
-                    to: keyframe.move.from
-                });
+                this._board.moveBack(keyframe.move);
             } else {
-                move = extend({}, keyframe.move);
+                this._board.move(keyframe.move);
             }
-
-            this._board.move(move);
         },
         // private
         _reverseKeyframe: function(keyframe) {
