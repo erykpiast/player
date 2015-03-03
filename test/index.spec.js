@@ -153,6 +153,22 @@ describe('Player instance test', function() {
                 expect(player.seekingSpeed).toEqual(100);
             });
 
+            it('Should allow to get current speed when playing', function() {
+                player.speed = 100;
+
+                player.play();
+
+                expect(player.currentSpeed).toEqual(100);
+            });
+
+            it('Should allow to get current speed when seeking', function() {
+                player.seekingSpeed = 100;
+
+                player.seek(100);
+
+                expect(player.currentSpeed).toEqual(100);
+            });
+
             it('Should allow to get and set playing and seeking speed without breaking each other', function() {
                 player.speed = 10;
                 player.seekingSpeed = 100;
@@ -215,6 +231,31 @@ describe('Player instance test', function() {
                 requestAnimationFrameMock.trigger(1060);
                 expect(drawingFn.calls.count()).toBe(3);
                 expect(drawingFn.calls.argsFor(2)[0].length).toBe(3);
+            });
+
+            it('Should allow to set new speed during seeking', function() {
+                player.speed = 1;
+                player.seek(100);
+
+                // initial frame
+                requestAnimationFrameMock.trigger(1000);
+
+                // first frame
+                requestAnimationFrameMock.trigger(1020);
+
+                // next key frames
+                requestAnimationFrameMock.trigger(1040);
+
+                expect(function() {
+                    player.speed = 2;
+                }).not.toThrow();
+
+                // frames to the end of seeking
+                for(var i = 0; i < 101; i++) {
+                    requestAnimationFrameMock.trigger(1060 + (i * 20));
+                }
+
+                expect(player.currentSpeed).toEqual(2);
             });
 
 
@@ -966,7 +1007,7 @@ describe('Player.prototype.play with various speeds test', function() {
 
             speed = testedSpeed;
 
-            player._speed = speed;
+            player.speed = speed;
 
             player.play();
 

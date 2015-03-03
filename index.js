@@ -140,7 +140,23 @@ module.exports = (function() {
         // public properties (with getters and/or setters)
         Object.defineProperties(this, {
             /**
-             * @property {number,function} this._speed - current speed of playing (or seeking in PLAY_FRAMES mode)
+             * @property {number,function} this._currentSpeed - current speed of playing (or seeking in PLAY_FRAMES mode)
+             * @access protected
+             */
+            _currentSpeed: this._createSpeedProperty({
+                privateName: '_currentSpeed',
+                publicName: '_currentSpeed'
+            }),
+            /**
+             * @property {number} this.currentSpeed - current speed of playing (or seeking in PLAY_FRAMES mode)
+             * @access public
+             */
+            currentSpeed: this._createGetter({
+                privateName: '_currentSpeed',
+                publicName: 'currentSpeed'
+            }),
+            /**
+             * @property {number,function} this._speed - desired speed of playing (it can differ from currentSpeed when seeking in PLAY_FRAMES mode)
              * @access protected
              */
             _speed: this._createSpeedProperty({
@@ -148,7 +164,7 @@ module.exports = (function() {
                 publicName: '_speed'
             }),
             /**
-             * @property {number} this.speed - current speed of playing
+             * @property {number} this.speed - desired speed of playing (it can differ from currentSpeed when seeking in PLAY_FRAMES mode)
              * @access public
              */
             speed: this._createSpeedProperty({
@@ -463,10 +479,10 @@ module.exports = (function() {
                     this._previousDirection = this._direction;
                     this._previousRecordingEndTime = this._recordingEndTime;
 
-                    this._speed = this._seekingSpeed;
+                    this._currentSpeed = this._seekingSpeed;
 
                     // try to scale current average frame duration to new speed
-                    this._averageFrameDuration = (this._averageFrameDuration * (this.seekingSpeed / this.speed));
+                    this._averageFrameDuration = (this._averageFrameDuration * (this.seekingSpeed / this._speed));
                     this._resetAverageFrameDuration();
                 }
 
@@ -735,7 +751,7 @@ module.exports = (function() {
          * @return {number,microseconds} time adapted to current speed
          */
         _adaptToSpeed: function(value) {
-            return Math.round(value * this._speed, 10);
+            return Math.round(value * this._currentSpeed, 10);
         },
         /**
          * @method _toUs - converts milliseconds to microseconds
@@ -777,7 +793,7 @@ module.exports = (function() {
                 delete this._previousDirection;
             }
 
-            this._speed = this.speed;
+            this._currentSpeed = this._speed;
 
             /**
              * @event seeked - fired when seeking is finished
@@ -830,7 +846,7 @@ module.exports = (function() {
                     }
                 },
                 set: function(value) {
-                    // speed can be positive integer or function if it's seekingSpeed (or internal _speed)
+                    // speed can be positive integer or function if it's seekingSpeed (or internal _currentSpeed)
                     if(('function' === typeof value) && (conf.publicName !== 'speed')) {
                         if(value !== setVal) {
                             this[conf.privateName] = setVal = value;
@@ -855,8 +871,14 @@ module.exports = (function() {
                         }
                     }
 
-                    if((conf.publicName === 'seekingSpeed') && this._isSeeking) {
-                        this._speed = setVal;
+                    if(this._isSeeking) {
+                        if(conf.publicName === 'seekingSpeed') {
+                            this._currentSpeed = setVal;
+                        }
+                    } else {
+                        if(conf.publicName === 'speed') {
+                            this._currentSpeed = setVal;
+                        }
                     }
 
                     return setVal;
