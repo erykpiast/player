@@ -6,8 +6,8 @@ module.exports = (function() {
     var EventEmitter = require('events').EventEmitter;
     var util = require('util');
 
-    
-    /** 
+
+    /**
      * @constructor Player - creates new instance of player for given recording
      * @param {array} keyframes - an array of objects representing keyframes of recording
      * @param {function} drawer - function called on each recording frame
@@ -38,7 +38,7 @@ module.exports = (function() {
         }
 
         /**
-         * @property {object} this.defaults - default settings 
+         * @property {object} this.defaults - default settings
          * @access public
          */
         this.defaults = {
@@ -402,7 +402,7 @@ module.exports = (function() {
                 this.seek(fromTime);
             }
         },
-        /** 
+        /**
          * @method pause - pause playing in next frame
          * @access public
          */
@@ -686,20 +686,20 @@ module.exports = (function() {
          */
         _getNextKeyframe: function(t, toForward) {
             var time = this._toMs(t);
-            
+
             if(toForward) {
                 var low = 0;
                 while(this._keyframes[low] && (this._keyframes[low][this._timeKey] <= time)) {
                     low++;
                 }
-                
+
                 return this._keyframes[low];
             } else {
                 var high = this._keyframes.length - 1;
                 while(this._keyframes[high] && (this._keyframes[high][this._timeKey] >= time)) {
                     high--;
                 }
-                
+
                 return this._keyframes[high];
             }
         },
@@ -720,9 +720,18 @@ module.exports = (function() {
             }
 
             if(this._lastFramesDuration.length) {
-                return (this._lastFramesDuration.reduce(function(prev, current) {
-                    return (prev + current);
-                }) / this._lastFramesDuration.length);
+                var max = Math.max.apply(Math, this._lastFramesDuration);
+
+                var filtered = this._lastFramesDuration.slice();
+                filtered.splice(this._lastFramesDuration.indexOf(max), 1);
+
+                if (filtered.length) {
+                    return filtered.reduce(function(prev, current) {
+                        return (prev + current);
+                    }) / filtered.length;
+                } else {
+                    return max;
+                }
             } else {
                 return this._averageFrameDuration;
             }
@@ -924,7 +933,7 @@ module.exports = (function() {
          * @access protected
          * @param  {object} conf - configuration
          *      @property {string} conf.privateName - name of private (protected) property to get
-         *      @property {string} conf.publicName - name of public property 
+         *      @property {string} conf.publicName - name of public property
          *      @property {function} [conf.get] - custom getter function
          *      @property {function} [conf.set] - custom setter function
          * @return {object} ECMA5 property descriptor
